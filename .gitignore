@@ -15,6 +15,7 @@ Backend/.env
 Backend/.env.*
 !*.env.example
 !Backend/.env.example
+.env.local
 
 # Common ignores
 node_modules
