@@ -1,0 +1,125 @@
+"use client"
+
+import { createContext, useContext, useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
+import { io } from "socket.io-client"
+import { useAuth } from "@/app/context/AuthContext"
+import { readStoredAppPreferences } from "@/lib/app-preferences"
+import { authRequest, getStoredSessionToken } from "@/lib/auth-client"
+import { emitNotificationFeedback } from "@/lib/notification-runtime"
+import { getSocketUrl } from "@/lib/runtime-config"
+
+type Donation = {
+  _id: string
+  creatorId?: string
+  amount: number | string
+  sender?: string
+  senderName?: string
+  createdAt?: string | Date
+}
+
+type DonationsContextType = {
+  donations: Donation[]
+  setDonations: Dispatch<SetStateAction<Donation[]>>
+}
+
+const DonationsContext = createContext<DonationsContextType | null>(null)
+
+const normalizeDonation = (donation: any): Donation => ({
+  ...donation,
+  senderName: donation.senderName || donation.sender || "Anonymous",
+  sender: donation.sender || donation.senderName || "Anonymous",
+  createdAt: donation.createdAt ? new Date(donation.createdAt) : donation.createdAt,
+})
+
+export const DonationsProvider = ({ children }: { children: ReactNode }) => {
+  const [donations, setDonations] = useState<Donation[]>([])
+  const { user, isAuthenticated, refreshUser } = useAuth()
+  const userId = user?.id
+
+  const maybeShowDonationNotification = (donation: Donation) => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const preferences = readStoredAppPreferences()
+    if (!preferences.donationNotifications) {
+      return
+    }
+
+    const senderName = donation.senderName || "Anonymous"
+    const amount = Number(donation.amount) || 0
+
+    void emitNotificationFeedback("donation", preferences, {
+      title: "New donation received",
+      body: `${senderName} sent NGN ${amount.toLocaleString()}`,
+      tag: `donation-${donation._id ?? senderName}-${amount}`,
+    })
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated || !userId) {
+      setDonations([])
+      return
+    }
+
+    const fetchDonations = () => {
+      void authRequest("/donations")
+        .then((res) => res.json())
+        .then((data) => {
+          const fixed = Array.isArray(data) ? data.map((d: any) => normalizeDonation(d)) : []
+          setDonations(fixed)
+          void refreshUser()
+        })
+        .catch(() => {
+          // silent — network/server error; current state is preserved
+        })
+    }
+
+    fetchDonations()
+
+    const socket = io(getSocketUrl(), {
+      transports: ["websocket"],
+      auth: {
+        sessionToken: getStoredSessionToken(),
+      },
+    })
+
+    let isFirstConnect = true
+    socket.on("connect", () => {
+      if (isFirstConnect) {
+        // Initial connect is already covered by the fetchDonations() call above.
+        isFirstConnect = false
+        return
+      }
+      // Re-fetch on reconnect so payments received while disconnected (e.g.
+      // during a Render server restart) appear without needing a page refresh.
+      fetchDonations()
+    })
+
+    socket.on("newDonation", (data) => {
+      const fixed = normalizeDonation(data)
+
+      if (fixed.creatorId && fixed.creatorId !== userId) {
+        return
+      }
+
+      setDonations(prev => [fixed, ...prev])
+      maybeShowDonationNotification(fixed)
+      void refreshUser()
+    })
+
+    return () => {socket.disconnect()}
+  }, [isAuthenticated, refreshUser, userId])
+
+  return (
+    <DonationsContext.Provider value={{ donations, setDonations }}>
+      {children}
+    </DonationsContext.Provider>
+  )
+}
+
+export const useDonations = () => {
+  const context = useContext(DonationsContext)
+  if (!context) throw new Error("useDonations must be used inside provider")
+  return context
+}

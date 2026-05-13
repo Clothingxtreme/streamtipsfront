@@ -1,0 +1,840 @@
+"use client"
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import io from "socket.io-client"
+import { motion } from "framer-motion"
+import { Crown, Sparkles } from "lucide-react"
+import { DonationAlert } from "./donation-alert"
+import { Leaderboard, type Contributor } from "./leaderboard"
+import { ProgressBar } from "./progress-bar"
+import { useAuth } from "@/app/context/AuthContext"
+import { useOverlaySettings } from "@/app/context/OverlaySettingsContext"
+import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
+import { useCustomGifts } from "@/app/context/CustomGiftsContext"
+import { getGiftSoundForAmount } from "@/lib/gifts"
+import { getStoredSessionToken } from "@/lib/auth-client"
+import { getSocketUrl } from "@/lib/runtime-config"
+import { fetchPublicOverlayState, type PublicOverlayStatePayload } from "@/lib/overlay-state-client"
+import { getPublicDonorDisplayName } from "@/lib/donor-display"
+import { getStreamerPublicAccountName } from "@/lib/account-display"
+import type { OverlayAnchor, OverlayGradientConfig, PositionedOverlayObject } from "@/lib/overlay-customization"
+import { cn } from "@/lib/utils"
+import type { AppUser } from "@/lib/user"
+
+interface Donation {
+  id: string
+  senderName: string
+  amount: number
+  timestamp: number
+}
+
+type IncomingDonation = {
+  id?: string
+  _id?: string
+  sender?: string
+  senderName?: string
+  senderNameSource?: string
+  amount: unknown
+  walletStatus?: string
+  status?: string
+  date?: string
+  createdAt?: string | Date
+}
+
+const previewDonations = [
+  { senderName: "RoseStorm", amount: 15 },
+  { senderName: "MoneyRainHQ", amount: 7500 },
+  { senderName: "UniverseDrop", amount: 700000 },
+]
+const DEFAULT_ALERT_VISIBLE_MS = 5000
+const PREMIUM_ALERT_VISIBLE_MS = 10000
+const PREMIUM_ALERT_MIN_AMOUNT = 5000
+const DONATION_BACKFILL_WINDOW_MS = 10 * 60 * 1000
+
+type BrowserWindow = Window &
+  typeof globalThis & {
+    webkitAudioContext?: typeof AudioContext
+  }
+
+function getAudioContextClass() {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  const browserWindow = window as BrowserWindow
+  return browserWindow.AudioContext || browserWindow.webkitAudioContext || null
+}
+
+function buildGiftChord(amount: number) {
+  if (amount >= 700000) return [392, 523.25, 783.99]
+  if (amount >= 220000) return [329.63, 493.88, 659.25]
+  if (amount >= 15000) return [293.66, 440, 587.33]
+  if (amount >= 1500) return [261.63, 392, 523.25]
+  return [220, 329.63, 440]
+}
+
+function playApplauseNoise(context: AudioContext, startTime: number, duration: number) {
+  const sampleRate = context.sampleRate
+  const frameCount = Math.floor(sampleRate * duration)
+  const buffer = context.createBuffer(1, frameCount, sampleRate)
+  const channel = buffer.getChannelData(0)
+
+  for (let i = 0; i < frameCount; i += 1) {
+    const decay = 1 - i / frameCount
+    channel[i] = (Math.random() * 2 - 1) * decay
+  }
+
+  const source = context.createBufferSource()
+  const filter = context.createBiquadFilter()
+  const gainNode = context.createGain()
+  const tremolo = context.createOscillator()
+  const tremoloDepth = context.createGain()
+
+  source.buffer = buffer
+  filter.type = "bandpass"
+  filter.frequency.setValueAtTime(1800, startTime)
+  filter.Q.setValueAtTime(0.8, startTime)
+
+  tremolo.type = "square"
+  tremolo.frequency.setValueAtTime(11, startTime)
+  tremoloDepth.gain.setValueAtTime(0.035, startTime)
+
+  gainNode.gain.setValueAtTime(0.0001, startTime)
+  gainNode.gain.exponentialRampToValueAtTime(0.075, startTime + 0.04)
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration)
+
+  tremolo.connect(tremoloDepth)
+  tremoloDepth.connect(gainNode.gain)
+
+  source.connect(filter)
+  filter.connect(gainNode)
+  gainNode.connect(context.destination)
+
+  source.start(startTime)
+  source.stop(startTime + duration)
+  tremolo.start(startTime)
+  tremolo.stop(startTime + duration)
+}
+
+function playImpactSweep(context: AudioContext, startTime: number, amount: number) {
+  const oscillator = context.createOscillator()
+  const gainNode = context.createGain()
+
+  oscillator.type = amount >= 90000 ? "sawtooth" : "triangle"
+  oscillator.frequency.setValueAtTime(amount >= 90000 ? 160 : 120, startTime)
+  oscillator.frequency.exponentialRampToValueAtTime(amount >= 90000 ? 48 : 60, startTime + 0.7)
+
+  gainNode.gain.setValueAtTime(0.0001, startTime)
+  gainNode.gain.exponentialRampToValueAtTime(0.11, startTime + 0.03)
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.72)
+
+  oscillator.connect(gainNode)
+  gainNode.connect(context.destination)
+  oscillator.start(startTime)
+  oscillator.stop(startTime + 0.75)
+}
+
+function getAnchorClass(anchor: OverlayAnchor) {
+  if (anchor === "top-left") return "left-6 top-6"
+  if (anchor === "top-center") return "left-1/2 top-6"
+  if (anchor === "top-right") return "right-6 top-6"
+  if (anchor === "center") return "left-1/2 top-1/2"
+  if (anchor === "bottom-left") return "bottom-6 left-6"
+  if (anchor === "bottom-center") return "bottom-6 left-1/2"
+  return "bottom-6 right-6"
+}
+
+function getAnchorTransform(anchor: OverlayAnchor) {
+  if (anchor === "top-center" || anchor === "bottom-center") return "translateX(-50%)"
+  if (anchor === "center") return "translate(-50%, -50%)"
+  return ""
+}
+
+function overlayPositionStyle(position: PositionedOverlayObject, extraOffsetY = 0) {
+  const baseTransform = getAnchorTransform(position.anchor)
+  const offsetTransform = `translate(${position.offsetX}px, ${position.offsetY + extraOffsetY}px)`
+
+  return {
+    transform: [baseTransform, offsetTransform].filter(Boolean).join(" "),
+  }
+}
+
+function overlayGradientStyle(gradient: OverlayGradientConfig) {
+  return {
+    background: `linear-gradient(135deg, ${gradient.start}, ${gradient.middle}, ${gradient.end})`,
+  }
+}
+
+function parseDonationAmount(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value
+  }
+
+  const normalized = String(value || "")
+    .replace(/,/g, "")
+    .replace(/[^\d.-]/g, "")
+    .trim()
+  const parsed = Number(normalized)
+
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function getDonationTimestamp(value: IncomingDonation) {
+  const rawDate = value.date || value.createdAt
+  const timestamp = rawDate ? new Date(rawDate).getTime() : Date.now()
+
+  return Number.isFinite(timestamp) ? timestamp : Date.now()
+}
+
+function getDonationIdentity(value: IncomingDonation) {
+  const donationId = String(value._id || value.id || "").trim()
+
+  if (donationId) {
+    return donationId
+  }
+
+  return [
+    getPublicDonorDisplayName(value.senderName || value.sender, value.senderNameSource),
+    parseDonationAmount(value.amount),
+    getDonationTimestamp(value),
+  ].join(":")
+}
+
+function isSettledDonation(value: IncomingDonation) {
+  const walletStatus = String(value.walletStatus || "available").toLowerCase()
+  const status = String(value.status || "").toLowerCase()
+
+  return !["pending", "pending_review", "rejected", "failed"].includes(walletStatus) &&
+    !["pending", "pending_review", "rejected", "failed"].includes(status)
+}
+
+type OverlayProps = {
+  publicCreatorId?: string
+  initialPublicState?: PublicOverlayStatePayload | null
+  mode?: "full" | "gifts" | "goal" | "leaderboard" | "account"
+}
+
+export default function Overlay({
+  publicCreatorId = "",
+  initialPublicState = null,
+  mode = "full",
+}: OverlayProps) {
+  type AlertDonation = {
+    senderName: string
+    amount: number
+  }
+
+  const { user: authenticatedUser } = useAuth()
+  const { settings: storedSettings } = useOverlaySettings()
+  const { customization: storedCustomization } = useOverlayCustomization()
+  const { customGifts: storedCustomGifts } = useCustomGifts()
+  const [publicState, setPublicState] = useState<PublicOverlayStatePayload | null>(
+    initialPublicState,
+  )
+  const previewIndexRef = useRef(0)
+  const previewStartedRef = useRef(false)
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const shownDonationIdsRef = useRef<Set<string>>(new Set())
+  const overlayMountedAtRef = useRef(Date.now())
+
+  const [combo, setCombo] = useState({
+    senderName: "",
+    count: 0,
+    lastTime: 0,
+  })
+  const [queue, setQueue] = useState<Donation[]>([])
+  const [currentAlert, setCurrentAlert] = useState<AlertDonation | null>(null)
+  const [showAlert, setShowAlert] = useState(false)
+  const [contributors, setContributors] = useState<Contributor[]>([])
+  const [totalDonations, setTotalDonations] = useState(0)
+  const [isPortraitViewport, setIsPortraitViewport] = useState(false)
+  const isPublicOverlay = Boolean(publicCreatorId)
+  const user = (publicState?.user || authenticatedUser) as AppUser | null
+  const settings = publicState?.settings || storedSettings
+  const customization = publicState?.customization || storedCustomization
+  const customGifts = publicState?.customGifts || storedCustomGifts
+  const showGiftLayer = mode === "full" || mode === "gifts"
+  const showGoalLayer = mode === "full" || mode === "goal"
+  const showLeaderboardLayer = mode === "full" || mode === "leaderboard"
+  const showAccountLayer = mode === "full" || mode === "account"
+  const canPlayGiftAudio = mode === "full" || mode === "gifts"
+  const showIdleStage = mode === "full"
+  const publicAccountName = getStreamerPublicAccountName(user)
+
+  const topSupporter = useMemo(
+    () => [...contributors].sort((a, b) => b.amount - a.amount)[0] || null,
+    [contributors],
+  )
+
+  const ensureAudioContext = useCallback(async () => {
+    const AudioContextClass = getAudioContextClass()
+    if (!AudioContextClass) {
+      return null
+    }
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContextClass()
+    }
+
+    if (audioContextRef.current.state === "suspended") {
+      try {
+        await audioContextRef.current.resume()
+      } catch {
+        return audioContextRef.current
+      }
+    }
+
+    return audioContextRef.current
+  }, [])
+
+  const playGiftSound = useCallback(
+    async (amount: number) => {
+      const giftSound = getGiftSoundForAmount(amount, customGifts)
+
+      if (giftSound?.soundUrl) {
+        try {
+          const audio = new Audio(giftSound.soundUrl)
+          audio.volume = 0.95
+          await audio.play()
+          return
+        } catch {
+          // Fall back to the generated tone when a browser source blocks or cannot load custom audio.
+        }
+      }
+
+      const context = await ensureAudioContext()
+      if (!context || context.state !== "running") {
+        return
+      }
+
+      const now = context.currentTime
+      const notes = buildGiftChord(amount)
+
+      notes.forEach((frequency, index) => {
+        const oscillator = context.createOscillator()
+        const gainNode = context.createGain()
+
+        oscillator.type = amount >= 90000 ? "triangle" : "sine"
+        oscillator.frequency.setValueAtTime(frequency, now + index * 0.08)
+
+        gainNode.gain.setValueAtTime(0.0001, now + index * 0.08)
+        gainNode.gain.exponentialRampToValueAtTime(0.12, now + index * 0.08 + 0.03)
+        gainNode.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.08 + 0.55)
+
+        oscillator.connect(gainNode)
+        gainNode.connect(context.destination)
+        oscillator.start(now + index * 0.08)
+        oscillator.stop(now + index * 0.08 + 0.58)
+      })
+
+      if (amount >= 5000) {
+        playImpactSweep(context, now, amount)
+        playApplauseNoise(context, now + 0.12, amount >= 90000 ? 1.8 : 1.2)
+      }
+
+      if (amount >= 15000) {
+        const shimmer = context.createOscillator()
+        const shimmerGain = context.createGain()
+
+        shimmer.type = "triangle"
+        shimmer.frequency.setValueAtTime(880, now + 0.18)
+        shimmer.frequency.linearRampToValueAtTime(1320, now + 0.65)
+
+        shimmerGain.gain.setValueAtTime(0.0001, now + 0.18)
+        shimmerGain.gain.exponentialRampToValueAtTime(0.045, now + 0.24)
+        shimmerGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.9)
+
+        shimmer.connect(shimmerGain)
+        shimmerGain.connect(context.destination)
+        shimmer.start(now + 0.18)
+        shimmer.stop(now + 0.92)
+      }
+    },
+    [customGifts, ensureAudioContext],
+  )
+
+  useEffect(() => {
+    const unlock = () => {
+      void ensureAudioContext()
+    }
+
+    window.addEventListener("pointerdown", unlock)
+    window.addEventListener("keydown", unlock)
+
+    return () => {
+      window.removeEventListener("pointerdown", unlock)
+      window.removeEventListener("keydown", unlock)
+    }
+  }, [ensureAudioContext])
+
+  useEffect(() => {
+    const previousBodyBackground = document.body.style.background
+    const previousBodyOverflow = document.body.style.overflow
+    const previousHtmlBackground = document.documentElement.style.background
+
+    document.body.style.background = "transparent"
+    document.body.style.overflow = "hidden"
+    document.documentElement.style.background = "transparent"
+
+    return () => {
+      document.body.style.background = previousBodyBackground
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.background = previousHtmlBackground
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (audioContextRef.current) {
+        void audioContextRef.current.close()
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const syncViewportShape = () => {
+      setIsPortraitViewport(window.innerHeight > window.innerWidth)
+    }
+
+    syncViewportShape()
+    window.addEventListener("resize", syncViewportShape)
+    return () => window.removeEventListener("resize", syncViewportShape)
+  }, [])
+
+  useEffect(() => {
+    if (!isPublicOverlay || !publicCreatorId) {
+      return
+    }
+
+    let cancelled = false
+
+    const refreshPublicState = () => {
+      void fetchPublicOverlayState(publicCreatorId)
+        .then((state) => {
+          if (!cancelled) {
+            setPublicState(state)
+          }
+        })
+        .catch(() => undefined)
+    }
+
+    refreshPublicState()
+    const timer = window.setInterval(refreshPublicState, 5000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [isPublicOverlay, publicCreatorId])
+
+  useEffect(() => {
+    if (!publicState?.donations) {
+      return
+    }
+
+    const totals = new Map<string, number>()
+
+    publicState.donations.forEach((donation) => {
+      if (!isSettledDonation(donation)) {
+        return
+      }
+
+      const senderName = getPublicDonorDisplayName(
+        donation.senderName || donation.sender,
+        donation.senderNameSource,
+      )
+      totals.set(senderName, (totals.get(senderName) || 0) + parseDonationAmount(donation.amount))
+    })
+
+    setContributors(
+      Array.from(totals.entries()).map(([name, amount]) => ({
+        id: name,
+        name,
+        amount,
+      })),
+    )
+    setTotalDonations(
+      publicState.donations.reduce(
+        (total, donation) =>
+          isSettledDonation(donation) ? total + parseDonationAmount(donation.amount) : total,
+        0,
+      ),
+    )
+  }, [publicState?.donations])
+
+  const processDonation = useCallback(
+    (
+      incoming: IncomingDonation,
+      options: { updateTotals?: boolean; forceAlert?: boolean } = {},
+    ) => {
+      const { updateTotals = true, forceAlert = false } = options
+      const donation = {
+        senderName: getPublicDonorDisplayName(
+          incoming.senderName || incoming.sender,
+          incoming.senderNameSource,
+        ),
+        amount: parseDonationAmount(incoming.amount),
+      }
+
+      if (!isSettledDonation(incoming)) {
+        return
+      }
+
+      if (donation.amount <= 0) {
+        return
+      }
+
+      const fullDonation: Donation = {
+        ...donation,
+        id: getDonationIdentity(incoming),
+        timestamp: getDonationTimestamp(incoming),
+      }
+
+      if (settings.sounds && canPlayGiftAudio) {
+        void playGiftSound(fullDonation.amount)
+      }
+
+      if (updateTotals) {
+        setTotalDonations((current) => current + fullDonation.amount)
+        setContributors((current) => {
+          const match = current.find((contributor) => contributor.name === fullDonation.senderName)
+          if (match) {
+            return current.map((contributor) =>
+              contributor.name === fullDonation.senderName
+                ? { ...contributor, amount: contributor.amount + fullDonation.amount }
+                : contributor,
+            )
+          }
+
+          return [
+            ...current,
+            {
+              id: crypto.randomUUID(),
+              name: fullDonation.senderName,
+              amount: fullDonation.amount,
+            },
+          ]
+        })
+      }
+
+      const now = Date.now()
+      setCombo((current) => {
+        if (current.senderName === fullDonation.senderName && now - current.lastTime < 5000) {
+          return {
+            senderName: current.senderName,
+            count: current.count + 1,
+            lastTime: now,
+          }
+        }
+
+        return {
+          senderName: fullDonation.senderName,
+          count: 1,
+          lastTime: now,
+        }
+      })
+
+      if (settings.animations || forceAlert) {
+        setQueue((current) => {
+          if (fullDonation.amount >= 15000) {
+            return [fullDonation, ...current]
+          }
+
+          return [...current, fullDonation]
+        })
+      }
+    },
+    [canPlayGiftAudio, playGiftSound, settings.animations, settings.sounds],
+  )
+
+  useEffect(() => {
+    const socket = io(getSocketUrl(), {
+      transports: ["websocket"],
+      auth: {
+        sessionToken: isPublicOverlay ? "" : getStoredSessionToken(),
+        overlayCreatorId: isPublicOverlay ? publicCreatorId : "",
+      },
+    })
+
+    socket.on("newDonation", (data) => {
+      if (publicCreatorId && data.creatorId && String(data.creatorId) !== String(publicCreatorId)) {
+        return
+      }
+
+      const incomingDonation = {
+        id: data.id,
+        _id: data._id,
+        senderName: data.senderName || data.sender,
+        senderNameSource: data.senderNameSource,
+        amount: data.amount,
+        walletStatus: data.walletStatus,
+        status: data.status,
+        date: data.date,
+        createdAt: data.createdAt,
+      }
+
+      if (!isSettledDonation(incomingDonation)) {
+        return
+      }
+
+      shownDonationIdsRef.current.add(getDonationIdentity(incomingDonation))
+      processDonation(incomingDonation)
+    })
+
+    return () => {
+      socket.disconnect()
+    }
+  }, [isPublicOverlay, processDonation, publicCreatorId])
+
+  useEffect(() => {
+    if (!isPublicOverlay || !publicState?.donations?.length) {
+      return
+    }
+
+    const recentCutoff = Math.min(
+      overlayMountedAtRef.current,
+      Date.now() - DONATION_BACKFILL_WINDOW_MS,
+    )
+    const newDonations = [...publicState.donations]
+      .sort((left, right) => getDonationTimestamp(left) - getDonationTimestamp(right))
+      .filter((donation) => {
+        const donationIdentity = getDonationIdentity(donation)
+
+        if (shownDonationIdsRef.current.has(donationIdentity)) {
+          return false
+        }
+
+        if (getDonationTimestamp(donation) < recentCutoff) {
+          shownDonationIdsRef.current.add(donationIdentity)
+          return false
+        }
+
+        return isSettledDonation(donation) && parseDonationAmount(donation.amount) > 0
+      })
+
+    newDonations.forEach((donation) => {
+      shownDonationIdsRef.current.add(getDonationIdentity(donation))
+      processDonation(donation, { updateTotals: false, forceAlert: true })
+    })
+  }, [isPublicOverlay, processDonation, publicState?.donations])
+
+  useEffect(() => {
+    if (!settings.animations) {
+      setQueue([])
+      setCurrentAlert(null)
+      setShowAlert(false)
+    }
+  }, [settings.animations])
+
+  useEffect(() => {
+    if (queue.length === 0 || showAlert) {
+      return
+    }
+
+    const [nextDonation, ...rest] = queue
+    setQueue(rest)
+    setCurrentAlert(nextDonation)
+    setShowAlert(true)
+  }, [queue, showAlert])
+
+  useEffect(() => {
+    if (!showAlert || !currentAlert) {
+      return
+    }
+
+    const alertDuration =
+      currentAlert.amount >= PREMIUM_ALERT_MIN_AMOUNT
+        ? PREMIUM_ALERT_VISIBLE_MS
+        : DEFAULT_ALERT_VISIBLE_MS
+
+    const timer = window.setTimeout(() => {
+      setShowAlert(false)
+      setCurrentAlert(null)
+    }, alertDuration)
+
+    return () => window.clearTimeout(timer)
+  }, [currentAlert, showAlert])
+
+  useEffect(() => {
+    if (!settings.preview) {
+      previewStartedRef.current = false
+      return
+    }
+
+    const sendPreviewDonation = () => {
+      const donation = previewDonations[previewIndexRef.current % previewDonations.length]
+      previewIndexRef.current += 1
+      processDonation(donation, { updateTotals: false })
+    }
+
+    if (!previewStartedRef.current) {
+      sendPreviewDonation()
+      previewStartedRef.current = true
+    }
+
+    const timer = window.setInterval(sendPreviewDonation, 12000)
+    return () => window.clearInterval(timer)
+  }, [processDonation, settings.preview])
+
+  return (
+    <div className="fixed inset-0 overflow-hidden bg-transparent text-white">
+      {showIdleStage && customization.showAmbientScene ? (
+        <div className="absolute inset-0">
+          <div className="absolute left-[8%] top-[15%] h-40 w-40 rounded-full bg-fuchsia-400/12 blur-3xl" />
+          <div className="absolute right-[10%] top-[10%] h-48 w-48 rounded-full bg-sky-400/12 blur-3xl" />
+          <div className="absolute bottom-[12%] left-[16%] h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
+
+          {Array.from({ length: 16 }).map((_, index) => (
+            <motion.div
+              key={`ambient-orb-${index}`}
+              className="absolute rounded-full bg-white/22"
+              style={{
+                height: index % 3 === 0 ? 5 : 3,
+                width: index % 3 === 0 ? 5 : 3,
+                left: `${6 + ((index * 11) % 86)}%`,
+                top: `${8 + ((index * 7) % 76)}%`,
+                boxShadow: "0 0 18px rgba(255,255,255,0.18)",
+              }}
+              animate={{ opacity: [0.18, 0.8, 0.18], y: [0, -10, 0] }}
+              transition={{ duration: 3 + index * 0.18, repeat: Infinity, ease: "easeInOut" }}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      <div className="relative h-full p-6 lg:p-8">
+        {showGoalLayer && customization.showGoal ? (
+          <div
+            className={cn(
+              "absolute z-20 w-full max-w-3xl rounded-[28px] border border-white/14 px-5 py-4 shadow-[0_0_40px_rgba(34,211,238,0.08)] backdrop-blur-xl",
+              getAnchorClass(customization.goalPosition.anchor),
+            )}
+            style={{
+              ...overlayGradientStyle(customization.goalGradient),
+              opacity: customization.goalOpacity,
+              ...overlayPositionStyle(customization.goalPosition),
+            }}
+          >
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/65">
+                  Stream Goal
+                </p>
+                <p className="text-lg font-bold text-white">{customization.goalTitle}</p>
+              </div>
+              {customization.showTopSupporter && topSupporter ? (
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/14 bg-black/15 px-4 py-2 text-sm text-white/88">
+                  <Crown className="h-4 w-4 text-yellow-300" />
+                  <span className="font-semibold">{topSupporter.name}</span>
+                  <span className="text-white/60">leading</span>
+                </div>
+              ) : null}
+            </div>
+
+            <ProgressBar
+              currentAmount={totalDonations}
+              goalAmount={customization.goalAmount}
+              title={customization.goalTitle}
+            />
+          </div>
+        ) : null}
+
+        {showLeaderboardLayer && customization.showLeaderboard ? (
+          <div
+            className={cn(
+              "absolute z-20 w-[320px]",
+              getAnchorClass(customization.leaderboardPosition.anchor),
+            )}
+            style={overlayPositionStyle(customization.leaderboardPosition)}
+          >
+            <div
+              className="rounded-[30px] p-[1px]"
+              style={{
+                ...overlayGradientStyle(customization.leaderboardGradient),
+                opacity: customization.leaderboardOpacity,
+              }}
+            >
+              <div className="rounded-[30px] bg-black/28 p-1 backdrop-blur-xl">
+                <Leaderboard contributors={contributors} />
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showAccountLayer && customization.showAccountDetails && user?.virtualAccount?.accountNumber ? (
+          <div
+            className={cn(
+              "absolute z-20 w-[340px] rounded-[28px] border border-white/14 px-5 py-4 text-white shadow-[0_0_40px_rgba(0,0,0,0.12)] backdrop-blur-xl",
+              getAnchorClass(customization.accountPosition.anchor),
+            )}
+            style={{
+              ...overlayGradientStyle(customization.accountGradient),
+              opacity: customization.accountOpacity,
+              ...overlayPositionStyle(customization.accountPosition),
+            }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/65">
+              Virtual Account
+            </p>
+            <p className="mt-2 text-lg font-bold text-white">
+              {publicAccountName}
+            </p>
+            <p className="mt-2 font-mono text-2xl font-black tracking-[0.12em] text-white">
+              {user.virtualAccount.accountNumber}
+            </p>
+            <div className="mt-2 flex items-center justify-between gap-3 text-sm text-white/85">
+              <span>{user.virtualAccount.bankName || "Paystack"}</span>
+              <span>{user.virtualAccount.provider || "Paystack"}</span>
+            </div>
+          </div>
+        ) : null}
+
+        {showGiftLayer ? (
+          <div className="relative flex h-full items-center justify-center">
+            {currentAlert ? (
+              <div
+                className={cn(
+                  "absolute z-10",
+                  getAnchorClass(customization.alertPosition.anchor),
+                )}
+                style={overlayPositionStyle(
+                  customization.alertPosition,
+                  isPortraitViewport ? 140 : 0,
+                )}
+              >
+                <DonationAlert
+                  senderName={currentAlert.senderName}
+                  amount={currentAlert.amount}
+                  comboCount={combo.count}
+                  isVisible={showAlert}
+                  giftPack={customization.giftPack}
+                  gradient={customization.alertGradient}
+                  customGifts={customGifts}
+                />
+              </div>
+            ) : showIdleStage ? (
+              <div className="pointer-events-none text-center">
+                <motion.div
+                  animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0.9, 0.5] }}
+                  transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+                  className="mx-auto mb-5 flex h-28 w-28 items-center justify-center rounded-full border border-white/16 bg-white/8 backdrop-blur-md"
+                >
+                  <Sparkles className="h-10 w-10 text-fuchsia-200" />
+                </motion.div>
+                <p className="text-sm font-semibold uppercase tracking-[0.36em] text-white/45">
+                  Live Gift Overlay
+                </p>
+                <p className="mt-2 text-2xl font-black text-white/85">
+                  Waiting for the next gift drop
+                </p>
+                <p className="mt-2 text-sm text-white/55">
+                  The stage stays live for OBS, combos, leaderboard, and goal tracking.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,43 @@
+# v0 sandbox internal files
+__v0_runtime_loader.js
+__v0_devtools.tsx
+__v0_jsx-dev-runtime.ts
+.snowflake/
+.v0-trash/
+.vercel/
+next.user-config.*
+
+# Environment variables
+.env
+.env.*
+.env*.local
+Backend/.env
+Backend/.env.*
+!*.env.example
+!Backend/.env.example
+
+# Common ignores
+node_modules
+.next/
+.DS_Store
+streamtip-share-clean.zip
+
+Backend/node_modules
+Backend/.next/
+Backend/.DS_Store
+Backend/streamtip-share-clean.zip
+node_modules
+
+.vercel
+
+# Portal app generated files
+portal/node_modules/
+portal/dist/
+portal/.env
+portal/.env.*
+!portal/.env.example
+portal-vite*.log
+portal
+Streamtips.zip
+Backend
+portal

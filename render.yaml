@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: streamtip-api
+    runtime: node
+    rootDir: Backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    plan: starter
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: MONNIFY_API_KEY
+        sync: false
+      - key: MONNIFY_SECRET_KEY
+        sync: false
+      - key: MONNIFY_CONTRACT_CODE
+        sync: false
+      - key: MONNIFY_BASE_URL
+        value: https://api.monnify.com
+      - key: MONNIFY_DISBURSEMENT_SOURCE_ACCOUNT_NUMBER
+        sync: false
+      - key: FRONTEND_ORIGIN
+        value: https://streamtips.live,https://www.streamtips.live,https://portal.streamtips.live,https://*.vercel.app
+      - key: MONNIFY_WEBHOOK_IP_ALLOWLIST
+        value: 35.242.133.146
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: APPLE_CLIENT_ID
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
