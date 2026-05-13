@@ -265,7 +265,7 @@ export default function RegisterPage() {
           </h1>
           <p className="mt-4 leading-7 text-zinc-400">
             This flow keeps sign-up smooth while making sure BVN, NIN, date of birth, and name
-            details are complete before Paystack virtual-account provisioning starts.
+            details pass Monnify checks before Paystack virtual-account provisioning starts.
           </p>
 
           <div className="mt-8 space-y-3">
@@ -555,7 +555,7 @@ export default function RegisterPage() {
                 disabled={loading}
                 className="h-12 flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90"
               >
-                {loading ? "Creating account..." : "Finish sign up"}
+                {loading ? "Verifying identity..." : "Finish sign up"}
               </Button>
             )}
           </div>

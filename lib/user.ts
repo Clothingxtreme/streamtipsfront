@@ -30,6 +30,23 @@ export interface UserIdentity {
   isComplete?: boolean
 }
 
+export interface IdentityVerificationSnapshot {
+  status: "unverified" | "verified" | "failed" | "skipped"
+  matchStatus?: string
+  matchPercentage?: number
+  responseCode?: string
+  responseMessage?: string
+  checkedAt?: string
+  verifiedAt?: string
+}
+
+export interface IdentityVerification {
+  provider?: string
+  bvn?: IdentityVerificationSnapshot
+  nin?: IdentityVerificationSnapshot
+  updatedAt?: string
+}
+
 export interface PayoutProfile {
   bankName?: string
   bankCode?: string
@@ -82,6 +99,7 @@ export interface AppUser {
     updatedAt?: string
   }
   identity?: UserIdentity
+  identityVerification?: IdentityVerification
   payoutProfile?: PayoutProfile
   virtualAccount: VirtualAccount | null
   createdAt?: string

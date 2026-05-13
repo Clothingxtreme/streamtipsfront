@@ -3,7 +3,8 @@
 > vite --host 0.0.0.0 --port 5001
 
 
-  [32m[1mVITE[22m v7.3.2[39m  [2mready in [0m[1m660[22m[2m[0m ms[22m
+  [32m[1mVITE[22m v7.3.2[39m  [2mready in [0m[1m1646[22m[2m[0m ms[22m
 
   [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5001[22m/[39m
-  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.88.247:[1m5001[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.88.239:[1m5001[22m/[39m
+[2m3:38:17 PM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [32mpage reload [39m[2msrc/main.jsx[22m

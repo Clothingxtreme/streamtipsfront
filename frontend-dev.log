@@ -1,9 +1,10 @@
 ▲ Next.js 16.2.0 (webpack)
 - Local:         http://localhost:3001
-- Network:       http://192.168.0.136:3001
+- Network:       http://192.168.88.239:3001
 - Environments: .env.local
-✓ Ready in 1572ms
+✓ Ready in 1785ms
   next-swc build: wasm build @next/swc-wasm-nodejs
   Skipping creating a lockfile at C:\Users\Senpai\Downloads\streamtip-share-with-env\.next\dev\lock because we're using WASM bindings
 
-[?25h
+○ Compiling /register ...
+ GET /register 200 in 28.3s (next.js: 27.6s, application-code: 724ms)

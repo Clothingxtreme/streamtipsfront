@@ -174,6 +174,19 @@ function getUserNameParts(user?: AppUser | null) {
   }
 }
 
+function getVerificationLabel(status?: string) {
+  if (status === "verified") return "Verified by Monnify"
+  if (status === "failed") return "Verification failed"
+  if (status === "skipped") return "Skipped"
+  return "Not verified"
+}
+
+function getVerificationClass(status?: string) {
+  if (status === "verified") return "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+  if (status === "failed") return "border-red-500/20 bg-red-500/10 text-red-200"
+  return "border-zinc-700 bg-zinc-900 text-zinc-300"
+}
+
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth()
   const { preferences, updatePreference } = useAppPreferences()
@@ -226,7 +239,7 @@ export default function SettingsPage() {
   const [passwordMessage, setPasswordMessage] = useState("")
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const kycHelpText =
-    "Paystack may require BVN or NIN for live dedicated virtual-account validation. We only send it to the backend for account and KYC checks."
+    "BVN and NIN are verified by Monnify on the backend. We only send them to the backend for account and KYC checks."
 
   useEffect(() => {
     const nameParts = getUserNameParts(user)
@@ -764,9 +777,9 @@ export default function SettingsPage() {
 
             <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 space-y-4">
               <div>
-                <p className="text-sm font-medium text-white">Paystack KYC</p>
+                <p className="text-sm font-medium text-white">Monnify KYC</p>
                 <p className="mt-1 text-sm text-zinc-500">
-                  Add BVN or NIN so dedicated virtual-account validation can succeed in production.
+                  Add or update BVN/NIN details. The backend verifies them with Monnify before saving.
                 </p>
               </div>
 
@@ -792,6 +805,12 @@ export default function SettingsPage() {
                     }
                     className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
                   />
+                  <p className={cn(
+                    "inline-flex rounded-full border px-3 py-1 text-xs",
+                    getVerificationClass(user?.identityVerification?.bvn?.status),
+                  )}>
+                    {getVerificationLabel(user?.identityVerification?.bvn?.status)}
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -815,6 +834,12 @@ export default function SettingsPage() {
                     }
                     className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
                   />
+                  <p className={cn(
+                    "inline-flex rounded-full border px-3 py-1 text-xs",
+                    getVerificationClass(user?.identityVerification?.nin?.status),
+                  )}>
+                    {getVerificationLabel(user?.identityVerification?.nin?.status)}
+                  </p>
                 </div>
               </div>
             </div>

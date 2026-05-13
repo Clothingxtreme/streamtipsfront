@@ -35,6 +35,7 @@ type UserDraft = {
   firstName: string
   middleName: string
   lastName: string
+  dateOfBirth: string
   email: string
   phoneNumber: string
   password: string
@@ -48,6 +49,7 @@ const emptyDraft: UserDraft = {
   firstName: "",
   middleName: "",
   lastName: "",
+  dateOfBirth: "",
   email: "",
   phoneNumber: "",
   password: "",
@@ -60,6 +62,19 @@ function getUserDisplayName(user: AppUser) {
   return [user.firstName || user.identity?.firstName, user.middleName || user.identity?.middleName, user.lastName || user.identity?.lastName]
     .filter(Boolean)
     .join(" ") || user.name
+}
+
+function getVerificationLabel(status?: string) {
+  if (status === "verified") return "Verified"
+  if (status === "failed") return "Failed"
+  if (status === "skipped") return "Skipped"
+  return "Not verified"
+}
+
+function getVerificationClass(status?: string) {
+  if (status === "verified") return "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+  if (status === "failed") return "border-red-400/20 bg-red-400/10 text-red-200"
+  return "border-zinc-700 bg-zinc-950 text-zinc-300"
 }
 
 export default function AdminUsersPage() {
@@ -113,6 +128,7 @@ export default function AdminUsersPage() {
       firstName: selectedUser.firstName || selectedUser.identity?.firstName || "",
       middleName: selectedUser.middleName || selectedUser.identity?.middleName || "",
       lastName: selectedUser.lastName || selectedUser.identity?.lastName || "",
+      dateOfBirth: selectedUser.identity?.dateOfBirth?.slice(0, 10) || "",
       email: selectedUser.email,
       phoneNumber: selectedUser.phoneNumber || "",
       password: "",
@@ -164,6 +180,10 @@ export default function AdminUsersPage() {
           name: editDraft.name,
           email: editDraft.email,
           phoneNumber: editDraft.phoneNumber,
+          dateOfBirth: editDraft.dateOfBirth,
+          identity: {
+            dateOfBirth: editDraft.dateOfBirth,
+          },
           password: editDraft.password,
           role: editDraft.role,
           status: editDraft.status,
@@ -234,6 +254,36 @@ export default function AdminUsersPage() {
         requestError instanceof Error
           ? requestError.message
           : "Could not create a virtual account.",
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const verifyIdentity = async (userId: string, type: "bvn" | "nin" | "both") => {
+    setSubmitting(true)
+    setMessage("")
+    setError("")
+
+    try {
+      const response = await adminRequest(`/admin/users/${userId}/identity-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, force: true }),
+      })
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Could not verify identity with Monnify.")
+      }
+
+      setMessage(`Monnify ${type.toUpperCase()} verification completed.`)
+      await loadUsers()
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not verify identity with Monnify.",
       )
     } finally {
       setSubmitting(false)
@@ -444,6 +494,16 @@ export default function AdminUsersPage() {
                 className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-600"
               />
             </FormField>
+            <FormField label="Date of birth">
+              <Input
+                type="date"
+                value={createDraft.dateOfBirth}
+                onChange={(event) =>
+                  setCreateDraft((current) => ({ ...current, dateOfBirth: event.target.value }))
+                }
+                className="border-zinc-700 bg-zinc-950/70 text-white"
+              />
+            </FormField>
             <FormField label="Temporary password">
               <Input
                 type="password"
@@ -590,6 +650,16 @@ export default function AdminUsersPage() {
                       className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-600"
                     />
                   </FormField>
+                  <FormField label="Date of birth">
+                    <Input
+                      type="date"
+                      value={editDraft.dateOfBirth}
+                      onChange={(event) =>
+                        setEditDraft((current) => ({ ...current, dateOfBirth: event.target.value }))
+                      }
+                      className="border-zinc-700 bg-zinc-950/70 text-white"
+                    />
+                  </FormField>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -640,6 +710,64 @@ export default function AdminUsersPage() {
                       Paystack customer: {selectedUser.virtualAccount.paystackCustomerCode}
                     </p>
                   ) : null}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4">
+                  <p className="text-sm text-zinc-500">Monnify identity verification</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    DOB: {selectedUser.identity?.hasDateOfBirth ? selectedUser.identity.dateOfBirth?.slice(0, 10) : "missing"}
+                  </p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className={cn(
+                      "rounded-xl border px-3 py-3 text-sm",
+                      getVerificationClass(selectedUser.identityVerification?.bvn?.status),
+                    )}>
+                      <p className="font-medium">BVN</p>
+                      <p className="mt-1 text-xs opacity-80">
+                        {selectedUser.identity?.hasBvn ? `Saved ending in ${selectedUser.identity.bvnLast4 || "****"}` : "No BVN saved"}
+                      </p>
+                      <p className="mt-1 text-xs">{getVerificationLabel(selectedUser.identityVerification?.bvn?.status)}</p>
+                    </div>
+                    <div className={cn(
+                      "rounded-xl border px-3 py-3 text-sm",
+                      getVerificationClass(selectedUser.identityVerification?.nin?.status),
+                    )}>
+                      <p className="font-medium">NIN</p>
+                      <p className="mt-1 text-xs opacity-80">
+                        {selectedUser.identity?.hasNin ? `Saved ending in ${selectedUser.identity.ninLast4 || "****"}` : "No NIN saved"}
+                      </p>
+                      <p className="mt-1 text-xs">{getVerificationLabel(selectedUser.identityVerification?.nin?.status)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void verifyIdentity(selectedUser.id, "bvn")}
+                      disabled={submitting || !selectedUser.identity?.hasBvn}
+                      className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
+                    >
+                      Verify BVN
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void verifyIdentity(selectedUser.id, "nin")}
+                      disabled={submitting || !selectedUser.identity?.hasNin}
+                      className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
+                    >
+                      Verify NIN
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void verifyIdentity(selectedUser.id, "both")}
+                      disabled={submitting || !selectedUser.identity?.hasBvn || !selectedUser.identity?.hasNin}
+                      className="border-cyan-400/30 bg-cyan-400/10 text-cyan-100 hover:bg-cyan-400/20"
+                    >
+                      Verify Both
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-3">
