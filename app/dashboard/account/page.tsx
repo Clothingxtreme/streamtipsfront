@@ -1,5 +1,6 @@
 "use client"
 
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import {
   Building2,
@@ -26,6 +27,7 @@ const fallbackAccount = {
 }
 
 export default function VirtualAccountPage() {
+  const router = useRouter()
   const [copiedField, setCopiedField] = useState<string | null>(null)
   const [testSender, setTestSender] = useState("Monnify Sandbox Tester")
   const [testAmount, setTestAmount] = useState("1500")
@@ -33,6 +35,7 @@ export default function VirtualAccountPage() {
   const [testFeedback, setTestFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const [isProvisioning, setIsProvisioning] = useState(false)
   const [provisionFeedback, setProvisionFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null)
+  const [showVerifyBvnPrompt, setShowVerifyBvnPrompt] = useState(false)
   const { user, refreshUser } = useAuth()
   const isSandboxAccount = user?.virtualAccount?.provider === "monnify"
   const needsProvisioning =
@@ -56,6 +59,9 @@ export default function VirtualAccountPage() {
       const payload = await response.json().catch(() => ({}))
 
       if (!response.ok) {
+        if (String(payload?.code || "") === "BVN_VERIFICATION_REQUIRED") {
+          setShowVerifyBvnPrompt(true)
+        }
         throw new Error(payload.error || "Could not provision your Paystack virtual account.")
       }
 
@@ -65,6 +71,12 @@ export default function VirtualAccountPage() {
         message: "Your Paystack dedicated virtual account has been refreshed.",
       })
     } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.toLowerCase().includes("verify your bvn")
+      ) {
+        setShowVerifyBvnPrompt(true)
+      }
       setProvisionFeedback({
         type: "error",
         message:
@@ -149,13 +161,14 @@ export default function VirtualAccountPage() {
   ]
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
-      <div>
+    <>
+      <div className="p-6 space-y-6 max-w-5xl">
+        <div>
         <h1 className="text-2xl font-bold text-white">Virtual Account</h1>
         <p className="text-zinc-400 mt-1">
           Your Paystack dedicated virtual account for receiving donations
         </p>
-      </div>
+        </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-xl overflow-hidden">
@@ -421,7 +434,7 @@ export default function VirtualAccountPage() {
         </div>
       </div>
 
-      {isSandboxAccount ? (
+        {isSandboxAccount ? (
         <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-xl overflow-hidden">
           <div className="px-6 py-5 border-b border-zinc-800 flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
@@ -484,7 +497,38 @@ export default function VirtualAccountPage() {
             </button>
           </div>
         </div>
+        ) : null}
+      </div>
+
+      {showVerifyBvnPrompt ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 shadow-2xl">
+            <h2 className="text-lg font-semibold text-white">BVN verification required</h2>
+            <p className="mt-2 text-sm text-zinc-300">
+              Please verify your BVN before generating a virtual account.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowVerifyBvnPrompt(false)}
+                className="h-10 rounded-lg border border-zinc-700 px-4 text-sm font-medium text-zinc-200 hover:bg-zinc-800"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVerifyBvnPrompt(false)
+                  router.push("/dashboard/settings#bvn-verification")
+                }}
+                className="h-10 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 text-sm font-medium text-white hover:opacity-90"
+              >
+                Verify BVN
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
-    </div>
+    </>
   )
 }

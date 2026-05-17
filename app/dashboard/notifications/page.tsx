@@ -26,10 +26,35 @@ import {
   requestDesktopNotificationPermission,
 } from "@/lib/notification-runtime"
 import { notificationSoundOptions, type NotificationSoundId } from "@/lib/app-preferences"
+import { authRequest } from "@/lib/auth-client"
+
+type AccountNotification = {
+  id: string
+  type: string
+  title: string
+  message: string
+  metadata?: Record<string, unknown>
+  createdAt?: string
+  readAt?: string
+}
+
+function formatDate(value?: string) {
+  if (!value) return "Not available"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "Not available"
+  return new Intl.DateTimeFormat("en-NG", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date)
+}
 
 export default function NotificationsPage() {
   const { preferences, updatePreference } = useAppPreferences()
   const [statusMessage, setStatusMessage] = useState("")
+  const [accountNotifications, setAccountNotifications] = useState<AccountNotification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [loadingUpdates, setLoadingUpdates] = useState(false)
+  const [busyNotificationAction, setBusyNotificationAction] = useState("")
   const [permissionState, setPermissionState] = useState<NotificationPermission | "unsupported">(
     "unsupported",
   )
@@ -42,6 +67,63 @@ export default function NotificationsPage() {
 
     setPermissionState(window.Notification.permission)
   }, [])
+
+  const loadAccountNotifications = async () => {
+    setLoadingUpdates(true)
+    try {
+      const response = await authRequest("/notifications")
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(payload?.error || "Could not load account updates.")
+      }
+      setAccountNotifications(Array.isArray(payload?.notifications) ? payload.notifications : [])
+      setUnreadCount(Number(payload?.unreadCount) || 0)
+    } catch (requestError) {
+      setStatusMessage(requestError instanceof Error ? requestError.message : "Could not load account updates.")
+    } finally {
+      setLoadingUpdates(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadAccountNotifications()
+  }, [])
+
+  const markAllRead = async () => {
+    setBusyNotificationAction("mark-all-read")
+    try {
+      const response = await authRequest("/notifications/read-all", { method: "POST" })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(payload?.error || "Could not update notifications.")
+      }
+      setAccountNotifications(Array.isArray(payload?.notifications) ? payload.notifications : [])
+      setUnreadCount(Number(payload?.unreadCount) || 0)
+      setStatusMessage("All account updates marked as read.")
+    } catch (requestError) {
+      setStatusMessage(requestError instanceof Error ? requestError.message : "Could not update notifications.")
+    } finally {
+      setBusyNotificationAction("")
+    }
+  }
+
+  const markOneRead = async (id: string) => {
+    if (!id) return
+    setBusyNotificationAction(`mark-read-${id}`)
+    try {
+      const response = await authRequest(`/notifications/${id}/read`, { method: "POST" })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(payload?.error || "Could not update this notification.")
+      }
+      setAccountNotifications(Array.isArray(payload?.notifications) ? payload.notifications : [])
+      setUnreadCount(Number(payload?.unreadCount) || 0)
+    } catch (requestError) {
+      setStatusMessage(requestError instanceof Error ? requestError.message : "Could not update this notification.")
+    } finally {
+      setBusyNotificationAction("")
+    }
+  }
 
   const summaryCards = useMemo(
     () => [
@@ -192,6 +274,74 @@ export default function NotificationsPage() {
           </div>
         </div>
       ) : null}
+
+      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 overflow-hidden">
+        <div className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Account Updates</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              KYC and tier-review updates appear here for approvals, rejections, and submissions.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300">
+              Unread: {unreadCount}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
+              onClick={() => void markAllRead()}
+              disabled={busyNotificationAction === "mark-all-read" || unreadCount <= 0}
+            >
+              Mark all read
+            </Button>
+          </div>
+        </div>
+        <div className="p-4 sm:p-6">
+          {loadingUpdates ? (
+            <p className="text-sm text-zinc-400">Loading account updates...</p>
+          ) : accountNotifications.length ? (
+            <div className="space-y-3">
+              {accountNotifications.map((item) => {
+                const unread = !item.readAt
+                return (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "rounded-2xl border px-4 py-3",
+                      unread ? "border-emerald-500/30 bg-emerald-500/10" : "border-zinc-800 bg-zinc-950/60",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-white">{item.title || "Update"}</p>
+                        <p className="mt-1 text-sm text-zinc-300">{item.message || "No details provided."}</p>
+                        <p className="mt-2 text-xs text-zinc-500">{formatDate(item.createdAt)}</p>
+                      </div>
+                      {unread ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
+                          onClick={() => void markOneRead(item.id)}
+                          disabled={busyNotificationAction === `mark-read-${item.id}`}
+                        >
+                          Mark read
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-zinc-500">Read</span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-400">No account updates yet.</p>
+          )}
+        </div>
+      </section>
 
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 overflow-hidden">
         <div className="border-b border-zinc-800 px-6 py-4">

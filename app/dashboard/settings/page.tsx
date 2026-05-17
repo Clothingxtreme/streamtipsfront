@@ -238,8 +238,13 @@ export default function SettingsPage() {
   const [profileMessage, setProfileMessage] = useState("")
   const [passwordMessage, setPasswordMessage] = useState("")
   const [isLoadingUser, setIsLoadingUser] = useState(true)
+  const [continuePayoutSetup, setContinuePayoutSetup] = useState(false)
   const kycHelpText =
     "BVN and NIN are verified by Monnify on the backend. We only send them to the backend for account and KYC checks."
+
+  useEffect(() => {
+    setContinuePayoutSetup(new URLSearchParams(window.location.search).get("complete") === "payout")
+  }, [])
 
   useEffect(() => {
     const nameParts = getUserNameParts(user)
@@ -514,7 +519,7 @@ export default function SettingsPage() {
       await refreshUser()
       setPayoutForm({ bankName: "", bankCode: "", accountNumber: "", accountName: "" })
       setPayoutState("saved")
-      setPayoutMessage("Payout account verified and locked.")
+      setPayoutMessage(payload?.warning || "Payout account verified and locked.")
       window.setTimeout(() => setPayoutState("idle"), 2500)
     } catch (error) {
       setPayoutState("error")
@@ -775,7 +780,10 @@ export default function SettingsPage() {
               />
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 space-y-4">
+            <div
+              id="bvn-verification"
+              className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 space-y-4 scroll-mt-24"
+            >
               <div>
                 <p className="text-sm font-medium text-white">Monnify KYC</p>
                 <p className="mt-1 text-sm text-zinc-500">
@@ -852,6 +860,12 @@ export default function SettingsPage() {
                   match your first, middle, and last name.
                 </p>
               </div>
+
+              {continuePayoutSetup && !user?.payoutProfile?.locked ? (
+                <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+                  Add and lock your payout bank account to finish signup.
+                </div>
+              ) : null}
 
               {user?.payoutProfile?.locked ? (
                 <div className="space-y-4">
@@ -1157,6 +1171,20 @@ export default function SettingsPage() {
                 label="KYC tier"
                 value={`Tier ${user?.kyc?.tier || user?.kycTier || 1} - ${user?.kyc?.status || user?.kycStatus || "incomplete"}`}
               />
+              {Number(user?.kyc?.nextTier || 0) > 0 ? (
+                <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3">
+                  <p className="text-sm text-cyan-100">
+                    Upgrade available: Tier {user?.kyc?.nextTier}
+                  </p>
+                  <Link href="/dashboard/kyc-upgrade" className="mt-2 inline-flex text-sm font-medium text-cyan-200 underline">
+                    Start tier upgrade
+                  </Link>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                  Highest tier reached (Tier 4). No more upgrades available.
+                </div>
+              )}
               <SummaryRow
                 label="BVN status"
                 value={

@@ -1,0 +1,531 @@
+[Paystack] ✗ GET https://api.paystack.co/bank/resolve → 401 Your IP address is not allowed to make this call
+AxiosError: Request failed with status code 401
+    at settle (C:\Users\Senpai\Downloads\streamtip-share-with-env\Backend\node_modules\axios\dist\node\axios.cjs:2304:7)
+    at IncomingMessage.handleStreamEnd (C:\Users\Senpai\Downloads\streamtip-share-with-env\Backend\node_modules\axios\dist\node\axios.cjs:3772:13)
+    at IncomingMessage.emit (node:events:530:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+    at Axios.request (C:\Users\Senpai\Downloads\streamtip-share-with-env\Backend\node_modules\axios\dist\node\axios.cjs:5110:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async request (C:\Users\Senpai\Downloads\streamtip-share-with-env\Backend\services\paystack.js:27:18)
+    at async resolvePaystackBankAccountName (C:\Users\Senpai\Downloads\streamtip-share-with-env\Backend\server.js:4361:20)
+    at async C:\Users\Senpai\Downloads\streamtip-share-with-env\Backend\server.js:7760:20 {
+  isAxiosError: true,
+  code: 'ERR_BAD_REQUEST',
+  config: {
+    transitional: {
+      silentJSONParsing: true,
+      forcedJSONParsing: true,
+      clarifyTimeoutError: false,
+      legacyInterceptorReqResOrdering: true
+    },
+    adapter: [ 'xhr', 'http', 'fetch' ],
+    transformRequest: [ [Function: transformRequest] ],
+    transformResponse: [ [Function: transformResponse] ],
+    timeout: 20000,
+    xsrfCookieName: 'XSRF-TOKEN',
+    xsrfHeaderName: 'X-XSRF-TOKEN',
+    maxContentLength: -1,
+    maxBodyLength: -1,
+    env: { FormData: [Function], Blob: [class Blob] },
+    validateStatus: [Function: validateStatus],
+    headers: Object [AxiosHeaders] {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer sk_live_0c23f9cf78313e6b5dc202a17b88323b22bbce23',
+      'User-Agent': 'axios/1.13.6',
+      'Accept-Encoding': 'gzip, compress, deflate, br'
+    },
+    method: 'get',
+    url: 'https://api.paystack.co/bank/resolve',
+    params: { account_number: '8141539769', bank_code: '999992' },
+    allowAbsoluteUrls: true,
+    data: undefined
+  },
+  request: <ref *1> ClientRequest {
+    _events: [Object: null prototype] {
+      abort: [Function (anonymous)],
+      aborted: [Function (anonymous)],
+      connect: [Function (anonymous)],
+      error: [Function (anonymous)],
+      socket: [Function (anonymous)],
+      timeout: [Function (anonymous)],
+      finish: [Function: requestOnFinish]
+    },
+    _eventsCount: 7,
+    _maxListeners: undefined,
+    outputData: [],
+    outputSize: 0,
+    writable: true,
+    destroyed: true,
+    _last: true,
+    chunkedEncoding: false,
+    shouldKeepAlive: true,
+    maxRequestsOnConnectionReached: false,
+    _defaultKeepAlive: true,
+    useChunkedEncodingByDefault: false,
+    sendDate: false,
+    _removedConnection: false,
+    _removedContLen: false,
+    _removedTE: false,
+    strictContentLength: false,
+    _contentLength: 0,
+    _hasBody: true,
+    _trailer: '',
+    finished: true,
+    _headerSent: true,
+    _closed: true,
+    _header: 'GET /bank/resolve?account_number=8141539769&bank_code=999992 HTTP/1.1\r\n' +
+      'Accept: application/json\r\n' +
+      'Content-Type: application/json\r\n' +
+      'Authorization: Bearer sk_live_0c23f9cf78313e6b5dc202a17b88323b22bbce23\r\n' +
+      'User-Agent: axios/1.13.6\r\n' +
+      'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+      'Host: api.paystack.co\r\n' +
+      'Connection: keep-alive\r\n' +
+      '\r\n',
+    _keepAliveTimeout: 0,
+    _onPendingData: [Function: nop],
+    agent: Agent {
+      _events: [Object: null prototype],
+      _eventsCount: 2,
+      _maxListeners: undefined,
+      defaultPort: 443,
+      protocol: 'https:',
+      options: [Object: null prototype],
+      requests: [Object: null prototype] {},
+      sockets: [Object: null prototype] {},
+      freeSockets: [Object: null prototype],
+      keepAliveMsecs: 1000,
+      keepAlive: true,
+      maxSockets: Infinity,
+      maxFreeSockets: 256,
+      scheduling: 'lifo',
+      maxTotalSockets: Infinity,
+      totalSocketCount: 1,
+      maxCachedSessions: 100,
+      _sessionCache: [Object],
+      [Symbol(shapeMode)]: false,
+      [Symbol(kCapture)]: false
+    },
+    socketPath: undefined,
+    method: 'GET',
+    maxHeaderSize: undefined,
+    insecureHTTPParser: undefined,
+    joinDuplicateHeaders: undefined,
+    path: '/bank/resolve?account_number=8141539769&bank_code=999992',
+    _ended: true,
+    res: IncomingMessage {
+      _events: [Object],
+      _readableState: [ReadableState],
+      _maxListeners: undefined,
+      socket: null,
+      httpVersionMajor: 1,
+      httpVersionMinor: 1,
+      httpVersion: '1.1',
+      complete: true,
+      rawHeaders: [Array],
+      rawTrailers: [],
+      joinDuplicateHeaders: undefined,
+      aborted: false,
+      upgrade: false,
+      url: '',
+      method: null,
+      statusCode: 401,
+      statusMessage: 'Unauthorized',
+      client: [TLSSocket],
+      _consuming: false,
+      _dumped: false,
+      req: [Circular *1],
+      _eventsCount: 4,
+      responseUrl: 'https://api.paystack.co/bank/resolve?account_number=8141539769&bank_code=999992',
+      redirects: [],
+      [Symbol(shapeMode)]: true,
+      [Symbol(kCapture)]: false,
+      [Symbol(kHeaders)]: [Object],
+      [Symbol(kHeadersCount)]: 26,
+      [Symbol(kTrailers)]: null,
+      [Symbol(kTrailersCount)]: 0
+    },
+    aborted: false,
+    timeoutCb: null,
+    upgradeOrConnect: false,
+    parser: null,
+    maxHeadersCount: null,
+    reusedSocket: false,
+    host: 'api.paystack.co',
+    protocol: 'https:',
+    _redirectable: Writable {
+      _events: [Object],
+      _writableState: [WritableState],
+      _maxListeners: undefined,
+      _options: [Object],
+      _ended: true,
+      _ending: true,
+      _redirectCount: 0,
+      _redirects: [],
+      _requestBodyLength: 0,
+      _requestBodyBuffers: [],
+      _eventsCount: 3,
+      _onNativeResponse: [Function (anonymous)],
+      _currentRequest: [Circular *1],
+      _currentUrl: 'https://api.paystack.co/bank/resolve?account_number=8141539769&bank_code=999992',
+      _timeout: null,
+      [Symbol(shapeMode)]: true,
+      [Symbol(kCapture)]: false
+    },
+    [Symbol(shapeMode)]: false,
+    [Symbol(kCapture)]: false,
+    [Symbol(kBytesWritten)]: 0,
+    [Symbol(kNeedDrain)]: false,
+    [Symbol(corked)]: 0,
+    [Symbol(kChunkedBuffer)]: [],
+    [Symbol(kChunkedLength)]: 0,
+    [Symbol(kSocket)]: TLSSocket {
+      _tlsOptions: [Object],
+      _secureEstablished: true,
+      _securePending: false,
+      _newSessionPending: false,
+      _controlReleased: true,
+      secureConnecting: false,
+      _SNICallback: null,
+      servername: 'api.paystack.co',
+      alpnProtocol: false,
+      authorized: true,
+      authorizationError: null,
+      encrypted: true,
+      _events: [Object: null prototype],
+      _eventsCount: 9,
+      connecting: false,
+      _hadError: false,
+      _parent: null,
+      _host: 'api.paystack.co',
+      _closeAfterHandlingError: false,
+      _readableState: [ReadableState],
+      _writableState: [WritableState],
+      allowHalfOpen: false,
+      _maxListeners: undefined,
+      _sockname: null,
+      _pendingData: null,
+      _pendingEncoding: '',
+      server: undefined,
+      _server: null,
+      ssl: [TLSWrap],
+      _requestCert: true,
+      _rejectUnauthorized: true,
+      timeout: 5000,
+      parser: null,
+      _httpMessage: null,
+      autoSelectFamilyAttemptedAddresses: [Array],
+      [Symbol(alpncallback)]: null,
+      [Symbol(res)]: [TLSWrap],
+      [Symbol(verified)]: true,
+      [Symbol(pendingSession)]: null,
+      [Symbol(async_id_symbol)]: -1,
+      [Symbol(kHandle)]: [TLSWrap],
+      [Symbol(lastWriteQueueSize)]: 0,
+      [Symbol(timeout)]: Timeout {
+        _idleTimeout: 5000,
+        _idlePrev: [TimersList],
+        _idleNext: [TimersList],
+        _idleStart: 196660,
+        _onTimeout: [Function: bound ],
+        _timerArgs: undefined,
+        _repeat: null,
+        _destroyed: false,
+        [Symbol(refed)]: false,
+        [Symbol(kHasPrimitive)]: false,
+        [Symbol(asyncId)]: 6638,
+        [Symbol(triggerId)]: 6636,
+        [Symbol(kAsyncContextFrame)]: undefined
+      },
+      [Symbol(kBuffer)]: null,
+      [Symbol(kBufferCb)]: null,
+      [Symbol(kBufferGen)]: null,
+      [Symbol(shapeMode)]: true,
+      [Symbol(kCapture)]: false,
+      [Symbol(kSetNoDelay)]: false,
+      [Symbol(kSetKeepAlive)]: true,
+      [Symbol(kSetKeepAliveInitialDelay)]: 1,
+      [Symbol(kBytesRead)]: 0,
+      [Symbol(kBytesWritten)]: 0,
+      [Symbol(connect-options)]: [Object]
+    },
+    [Symbol(kOutHeaders)]: [Object: null prototype] {
+      accept: [Array],
+      'content-type': [Array],
+      authorization: [Array],
+      'user-agent': [Array],
+      'accept-encoding': [Array],
+      host: [Array]
+    },
+    [Symbol(errored)]: null,
+    [Symbol(kHighWaterMark)]: 16384,
+    [Symbol(kRejectNonStandardBodyWrites)]: false,
+    [Symbol(kUniqueHeaders)]: null
+  },
+  response: {
+    status: 401,
+    statusText: 'Unauthorized',
+    headers: Object [AxiosHeaders] {
+      date: 'Wed, 13 May 2026 15:37:53 GMT',
+      'content-type': 'application/json',
+      'content-length': '80',
+      connection: 'keep-alive',
+      'cf-ray': '9fb2bf3ef857ede8-LHR',
+      'cf-cache-status': 'DYNAMIC',
+      server: 'cloudflare',
+      'strict-transport-security': 'max-age=31536000; includeSubDomains; preload',
+      'x-content-type-options': 'nosniff',
+      'x-amz-apigw-id': 'dT0g1HaCjoEEI5g=',
+      'x-amzn-errortype': 'AccessDeniedException',
+      'x-amzn-requestid': 'bfa110ae-8aef-4de3-af85-ecf4879d7ac4',
+      'set-cookie': [Array]
+    },
+    config: {
+      transitional: [Object],
+      adapter: [Array],
+      transformRequest: [Array],
+      transformResponse: [Array],
+      timeout: 20000,
+      xsrfCookieName: 'XSRF-TOKEN',
+      xsrfHeaderName: 'X-XSRF-TOKEN',
+      maxContentLength: -1,
+      maxBodyLength: -1,
+      env: [Object],
+      validateStatus: [Function: validateStatus],
+      headers: [Object [AxiosHeaders]],
+      method: 'get',
+      url: 'https://api.paystack.co/bank/resolve',
+      params: [Object],
+      allowAbsoluteUrls: true,
+      data: undefined
+    },
+    request: <ref *1> ClientRequest {
+      _events: [Object: null prototype],
+      _eventsCount: 7,
+      _maxListeners: undefined,
+      outputData: [],
+      outputSize: 0,
+      writable: true,
+      destroyed: true,
+      _last: true,
+      chunkedEncoding: false,
+      shouldKeepAlive: true,
+      maxRequestsOnConnectionReached: false,
+      _defaultKeepAlive: true,
+      useChunkedEncodingByDefault: false,
+      sendDate: false,
+      _removedConnection: false,
+      _removedContLen: false,
+      _removedTE: false,
+      strictContentLength: false,
+      _contentLength: 0,
+      _hasBody: true,
+      _trailer: '',
+      finished: true,
+      _headerSent: true,
+      _closed: true,
+      _header: 'GET /bank/resolve?account_number=8141539769&bank_code=999992 HTTP/1.1\r\n' +
+        'Accept: application/json\r\n' +
+        'Content-Type: application/json\r\n' +
+        'Authorization: Bearer sk_live_0c23f9cf78313e6b5dc202a17b88323b22bbce23\r\n' +
+        'User-Agent: axios/1.13.6\r\n' +
+        'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+        'Host: api.paystack.co\r\n' +
+        'Connection: keep-alive\r\n' +
+        '\r\n',
+      _keepAliveTimeout: 0,
+      _onPendingData: [Function: nop],
+      agent: [Agent],
+      socketPath: undefined,
+      method: 'GET',
+      maxHeaderSize: undefined,
+      insecureHTTPParser: undefined,
+      joinDuplicateHeaders: undefined,
+      path: '/bank/resolve?account_number=8141539769&bank_code=999992',
+      _ended: true,
+      res: [IncomingMessage],
+      aborted: false,
+      timeoutCb: null,
+      upgradeOrConnect: false,
+      parser: null,
+      maxHeadersCount: null,
+      reusedSocket: false,
+      host: 'api.paystack.co',
+      protocol: 'https:',
+      _redirectable: [Writable],
+      [Symbol(shapeMode)]: false,
+      [Symbol(kCapture)]: false,
+      [Symbol(kBytesWritten)]: 0,
+      [Symbol(kNeedDrain)]: false,
+      [Symbol(corked)]: 0,
+      [Symbol(kChunkedBuffer)]: [],
+      [Symbol(kChunkedLength)]: 0,
+      [Symbol(kSocket)]: [TLSSocket],
+      [Symbol(kOutHeaders)]: [Object: null prototype],
+      [Symbol(errored)]: null,
+      [Symbol(kHighWaterMark)]: 16384,
+      [Symbol(kRejectNonStandardBodyWrites)]: false,
+      [Symbol(kUniqueHeaders)]: null
+    },
+    data: {
+      status: false,
+      message: 'Your IP address is not allowed to make this call'
+    }
+  },
+  status: 401
+}
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613 → 401 Your IP address is not allowed to make this call
+[Paystack] ✗ GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133 → 401 Your IP address is not allowed to make this call

@@ -7,6 +7,7 @@ export interface AuthResponse {
   user: AppUser
   sessionToken: string
   warning?: string
+  nextStep?: "dashboard" | "payout"
 }
 
 export function getStoredSessionToken() {

@@ -1,8 +1,4 @@
-
-> backend@1.0.0 dev
-> node server.js
-
-[dotenv@17.3.1] injecting env (20) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.3.1] injecting env (22) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
 Server running on http://0.0.0.0:5000
 [Server] Outbound public IP: <!DOCTYPE html>
 <html lang="en">
@@ -214,7 +210,7 @@ Server running on http://0.0.0.0:5000
                             user_agent: 
                             <br>
                         
-                            port: 57772
+                            port: 52080
                             <br>
                         
                             language: 
@@ -256,7 +252,7 @@ Server running on http://0.0.0.0:5000
                     <td class="cli_command">$ curl ifconfig.me/all.json</td>
                     <td class="cli_arrow">&rArr;</td>
                     <td>
-                        {&quot;ip_addr&quot;:&quot;197.211.59.84&quot;,&quot;port&quot;:&quot;57772&quot;,&quot;method&quot;:&quot;GET&quot;,&quot;via&quot;:&quot;1.1 google&quot;,&quot;forwarded&quot;:&quot;197.211.59.84,34.160.111.145&quot;}
+                        {&quot;ip_addr&quot;:&quot;197.211.59.84&quot;,&quot;port&quot;:&quot;52080&quot;,&quot;method&quot;:&quot;GET&quot;,&quot;via&quot;:&quot;1.1 google&quot;,&quot;forwarded&quot;:&quot;197.211.59.84,34.160.111.145&quot;}
                     </td>
                 </tr>
 
@@ -268,3 +264,165 @@ Server running on http://0.0.0.0:5000
 
 </html>
 MongoDB Connected
+[Paystack] → GET https://api.paystack.co/bank
+[Paystack] ✓ GET https://api.paystack.co/bank → 200
+[Paystack] → GET https://api.paystack.co/bank
+[Paystack] ✓ GET https://api.paystack.co/bank → 200
+[Paystack] → GET https://api.paystack.co/bank
+[Paystack] ✓ GET https://api.paystack.co/bank → 200
+[Paystack] → GET https://api.paystack.co/bank
+[Paystack] ✓ GET https://api.paystack.co/bank → 200
+[Paystack] → GET https://api.paystack.co/bank/resolve
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778171825099_709435
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172119647_600936
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778172804069_584233
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227308273_314514
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778227592685_304551
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778530720453_496201
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778599843525_573287
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778600956272_299613
+[Paystack] → GET https://api.paystack.co/transfer/verify/stip_payout_1778601397132_4133

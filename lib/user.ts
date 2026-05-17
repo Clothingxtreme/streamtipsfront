@@ -76,12 +76,23 @@ export interface AppUser {
   profileImage?: string
   phoneNumber?: string
   phoneVerified?: boolean
-  kycTier?: 1 | 2 | 3
+  kycTier?: 1 | 2 | 3 | 4
   kycStatus?: "incomplete" | "pending" | "verified" | "rejected"
   kyc?: {
     tier: number
     status: string
     dailyReceivingLimit: number
+    limits?: {
+      singleGift: number
+      dailyGift: number
+      monthlyGift: number
+      singleWithdrawal: number
+      dailyWithdrawal: number
+      monthlyWithdrawal: number
+    }
+    nextTier?: number | null
+    requirements?: string[]
+    nextTierRequirements?: string[]
     phoneVerified: boolean
     bvnVerified: boolean
     ninVerified: boolean
@@ -90,6 +101,9 @@ export interface AppUser {
     proofOfAddressSubmitted: boolean
     bankStatementSubmitted: boolean
     socialMediaVerified: boolean
+    upgradeStatus?: "none" | "awaiting_review" | "approved" | "rejected"
+    upgradeTargetTier?: number
+    upgradeSubmittedAt?: string
     manualReviewStatus: string
   }
   wallet?: {
@@ -102,5 +116,6 @@ export interface AppUser {
   identityVerification?: IdentityVerification
   payoutProfile?: PayoutProfile
   virtualAccount: VirtualAccount | null
+  notificationUnreadCount?: number
   createdAt?: string
 }

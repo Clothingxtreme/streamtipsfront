@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { SocialAuthButtons } from "@/components/auth/social-auth-buttons"
 import { useAuth } from "@/app/context/AuthContext"
+import { getPostAuthRedirect } from "@/lib/onboarding"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login, socialLogin, isAuthenticated, isLoading } = useAuth()
+  const { login, socialLogin, isAuthenticated, isLoading, user } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -20,9 +21,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/dashboard")
+      router.replace(getPostAuthRedirect(user))
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, router, user])
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -34,12 +35,12 @@ export default function LoginPage() {
     setError("")
 
     try {
-      await login({
+      const result = await login({
         email: email.trim(),
         password,
       })
 
-      router.push("/dashboard")
+      router.push(getPostAuthRedirect(result.user))
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -93,12 +94,12 @@ export default function LoginPage() {
             <SocialAuthButtons
               disabled={loading}
               onGoogleCredential={async (credential) => {
-                await socialLogin("google", { credential })
-                router.push("/dashboard")
+                const result = await socialLogin("google", { credential })
+                router.push(getPostAuthRedirect(result.user))
               }}
               onAppleToken={async (identityToken) => {
-                await socialLogin("apple", { identityToken })
-                router.push("/dashboard")
+                const result = await socialLogin("apple", { identityToken })
+                router.push(getPostAuthRedirect(result.user))
               }}
             />
 

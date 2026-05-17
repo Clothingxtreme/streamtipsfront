@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select"
 import { useAuth } from "@/app/context/AuthContext"
 import { getApiBaseUrl } from "@/lib/runtime-config"
+import { getPostAuthRedirect } from "@/lib/onboarding"
 import { cn } from "@/lib/utils"
 
 type StepId = "account" | "phone" | "policy" | "bvn" | "dob" | "nin" | "names" | "payout"
@@ -44,9 +45,9 @@ const steps: Array<{ id: StepId; label: string }> = [
   { id: "account", label: "Account" },
   { id: "phone", label: "Phone" },
   { id: "policy", label: "Policy" },
-  { id: "bvn", label: "BVN" },
+  { id: "bvn", label: "BVN (Optional)" },
   { id: "dob", label: "DOB" },
-  { id: "nin", label: "NIN" },
+  { id: "nin", label: "NIN (Optional)" },
   { id: "names", label: "Names" },
   { id: "payout", label: "Payout" },
 ]
@@ -62,7 +63,7 @@ function splitFullName(name: string) {
 
 export default function RegisterPage() {
   const router = useRouter()
-  const { register, isAuthenticated, isLoading } = useAuth()
+  const { register, isAuthenticated, isLoading, user } = useAuth()
   const [stepIndex, setStepIndex] = useState(0)
   const [email, setEmail] = useState("")
   const [phoneNumber, setPhoneNumber] = useState("")
@@ -90,9 +91,9 @@ export default function RegisterPage() {
   const currentStep = steps[stepIndex]
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      router.replace("/dashboard")
+      router.replace(getPostAuthRedirect(user))
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, router, user])
 
   useEffect(() => {
     void fetch(`${getApiBaseUrl()}/public/banks`)
@@ -162,16 +163,16 @@ export default function RegisterPage() {
       return "Enter a valid phone number for Tier 1 KYC."
     }
 
-    if (currentStep.id === "bvn" && !/^\d{11}$/.test(bvn)) {
-      return "BVN must be 11 digits."
+    if (currentStep.id === "bvn" && bvn && !/^\d{11}$/.test(bvn)) {
+      return "BVN must be 11 digits when provided."
     }
 
     if (currentStep.id === "dob" && !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
       return "Enter your date of birth."
     }
 
-    if (currentStep.id === "nin" && !/^\d{11}$/.test(nin)) {
-      return "NIN must be 11 digits."
+    if (currentStep.id === "nin" && nin && !/^\d{11}$/.test(nin)) {
+      return "NIN must be 11 digits when provided."
     }
 
     if (currentStep.id === "names" && (!firstName.trim() || !lastName.trim())) {
@@ -236,7 +237,9 @@ export default function RegisterPage() {
         result.warning ||
           "Account created successfully. Your creator dashboard is ready.",
       )
-      window.setTimeout(() => router.push("/dashboard"), 1200)
+      const redirectTo =
+        result.nextStep === "payout" ? "/dashboard/settings?complete=payout" : getPostAuthRedirect(result.user)
+      window.setTimeout(() => router.push(redirectTo), 1200)
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -264,14 +267,14 @@ export default function RegisterPage() {
             Create your account first, then complete identity setup before going live.
           </h1>
           <p className="mt-4 leading-7 text-zinc-400">
-            This flow keeps sign-up smooth while making sure BVN, NIN, date of birth, and name
-            details pass Monnify checks before Paystack virtual-account provisioning starts.
+            This flow keeps sign-up smooth. BVN and NIN are optional at signup and can be verified
+            later from Settings before virtual-account provisioning.
           </p>
 
           <div className="mt-8 space-y-3">
             <Info icon={ShieldCheck} title="Identity policy">
-              Wrong or incomplete BVN/NIN details can lead to account suspension and may prevent
-              virtual-account creation.
+              If you provide BVN/NIN details, they must be accurate. Invalid identity details can
+              lead to account restrictions.
             </Info>
             <Info icon={FileCheck2} title="Commercial note">
               StreamTip retains 20% of creator earnings as stated in the terms.
@@ -352,9 +355,8 @@ export default function RegisterPage() {
               <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5">
                 <p className="font-semibold text-white">Creator identity policy</p>
                 <p className="mt-3 text-sm leading-6 text-zinc-300">
-                  You must provide accurate BVN, NIN, date of birth, and legal name details. If
-                  these details are false, incomplete, or do not belong to you, StreamTip may
-                  suspend or permanently ban the account.
+                  Provide accurate identity details for KYC checks. You can sign up without BVN or
+                  NIN now, but you must verify your BVN later before virtual-account generation.
                 </p>
                 <label className="mt-5 flex cursor-pointer items-start gap-3 text-sm text-zinc-200">
                   <input
@@ -369,7 +371,7 @@ export default function RegisterPage() {
             ) : null}
 
             {currentStep.id === "bvn" ? (
-              <Field label="Enter your BVN">
+              <Field label="Enter your BVN (optional)">
                 <Input
                   inputMode="numeric"
                   value={bvn}
@@ -392,7 +394,7 @@ export default function RegisterPage() {
             ) : null}
 
             {currentStep.id === "nin" ? (
-              <Field label="Enter your NIN">
+              <Field label="Enter your NIN (optional)">
                 <Input
                   inputMode="numeric"
                   value={nin}
@@ -555,7 +557,7 @@ export default function RegisterPage() {
                 disabled={loading}
                 className="h-12 flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90"
               >
-                {loading ? "Verifying identity..." : "Finish sign up"}
+                {loading ? "Creating account..." : "Finish sign up"}
               </Button>
             )}
           </div>

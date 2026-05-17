@@ -77,6 +77,44 @@ function getVerificationClass(status?: string) {
   return "border-zinc-700 bg-zinc-950 text-zinc-300"
 }
 
+function getVerificationTypesForRequest(type: "bvn" | "nin" | "both") {
+  if (type === "bvn") return ["bvn"] as const
+  if (type === "nin") return ["nin"] as const
+  return ["bvn", "nin"] as const
+}
+
+function buildVerificationResult(payload: any, type: "bvn" | "nin" | "both") {
+  const verification = payload?.verification || payload?.user?.identityVerification || {}
+  const requestedTypes = getVerificationTypesForRequest(type)
+  const failedTypes = requestedTypes.filter((item) => {
+    const status = String(verification?.[item]?.status || "").toLowerCase()
+    return status !== "verified"
+  })
+
+  if (!failedTypes.length) {
+    return {
+      ok: true,
+      message:
+        requestedTypes.length === 2
+          ? "Monnify BVN and NIN verification passed and saved."
+          : `Monnify ${requestedTypes[0].toUpperCase()} verification passed and saved.`,
+    }
+  }
+
+  const details = failedTypes
+    .map((item) => {
+      const snapshot = verification?.[item] || {}
+      const reason = String(snapshot.responseMessage || snapshot.matchStatus || "verification failed").trim()
+      return `${item.toUpperCase()}: ${reason}`
+    })
+    .join(" | ")
+
+  return {
+    ok: false,
+    message: `Verification completed but not validated. ${details}`,
+  }
+}
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
@@ -277,8 +315,13 @@ export default function AdminUsersPage() {
         throw new Error(data?.error || "Could not verify identity with Monnify.")
       }
 
-      setMessage(`Monnify ${type.toUpperCase()} verification completed.`)
       await loadUsers()
+      const result = buildVerificationResult(data, type)
+      if (result.ok) {
+        setMessage(result.message)
+      } else {
+        setError(result.message)
+      }
     } catch (requestError) {
       setError(
         requestError instanceof Error
