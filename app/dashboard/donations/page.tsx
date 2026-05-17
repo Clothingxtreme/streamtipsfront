@@ -90,7 +90,7 @@ export default function DonationsPage() {
   }, [donations])
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div data-tour="donations-main" className="p-6 lg:p-8 space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-white">Donations</h1>
         <p className="text-zinc-500">View and manage all your donation history.</p>

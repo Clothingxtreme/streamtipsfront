@@ -34,7 +34,7 @@ import { getApiBaseUrl } from "@/lib/runtime-config"
 import { getPostAuthRedirect } from "@/lib/onboarding"
 import { cn } from "@/lib/utils"
 
-type StepId = "account" | "phone" | "policy" | "bvn" | "dob" | "nin" | "names" | "payout"
+type StepId = "account" | "phone" | "policy" | "bvn" | "dob" | "names" | "payout"
 
 type BankOption = {
   name: string
@@ -47,7 +47,6 @@ const steps: Array<{ id: StepId; label: string }> = [
   { id: "policy", label: "Policy" },
   { id: "bvn", label: "BVN (Optional)" },
   { id: "dob", label: "DOB" },
-  { id: "nin", label: "NIN (Optional)" },
   { id: "names", label: "Names" },
   { id: "payout", label: "Payout" },
 ]
@@ -71,7 +70,6 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [bvn, setBvn] = useState("")
   const [dateOfBirth, setDateOfBirth] = useState("")
-  const [nin, setNin] = useState("")
   const [firstName, setFirstName] = useState("")
   const [middleName, setMiddleName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -171,10 +169,6 @@ export default function RegisterPage() {
       return "Enter your date of birth."
     }
 
-    if (currentStep.id === "nin" && nin && !/^\d{11}$/.test(nin)) {
-      return "NIN must be 11 digits when provided."
-    }
-
     if (currentStep.id === "names" && (!firstName.trim() || !lastName.trim())) {
       return "Confirm your first and last name. Middle name is optional if you do not have one."
     }
@@ -222,7 +216,6 @@ export default function RegisterPage() {
         password,
         phoneNumber: phoneNumber.trim(),
         bvn,
-        nin,
         dateOfBirth,
         firstName: firstName.trim(),
         middleName: middleName.trim(),
@@ -267,14 +260,14 @@ export default function RegisterPage() {
             Create your account first, then complete identity setup before going live.
           </h1>
           <p className="mt-4 leading-7 text-zinc-400">
-            This flow keeps sign-up smooth. BVN and NIN are optional at signup and can be verified
-            later from Settings before virtual-account provisioning.
+            This flow keeps sign-up smooth. BVN is optional at signup and can be verified later from
+            Settings before virtual-account provisioning. NIN is only required when upgrading tiers.
           </p>
 
           <div className="mt-8 space-y-3">
             <Info icon={ShieldCheck} title="Identity policy">
-              If you provide BVN/NIN details, they must be accurate. Invalid identity details can
-              lead to account restrictions.
+              If you provide BVN details, they must be accurate. Invalid identity details can lead
+              to account restrictions.
             </Info>
             <Info icon={FileCheck2} title="Commercial note">
               StreamTip retains 20% of creator earnings as stated in the terms.
@@ -355,8 +348,8 @@ export default function RegisterPage() {
               <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-5">
                 <p className="font-semibold text-white">Creator identity policy</p>
                 <p className="mt-3 text-sm leading-6 text-zinc-300">
-                  Provide accurate identity details for KYC checks. You can sign up without BVN or
-                  NIN now, but you must verify your BVN later before virtual-account generation.
+                  Provide accurate identity details for KYC checks. You can sign up without BVN now,
+                  but you must verify your BVN later before virtual-account generation.
                 </p>
                 <label className="mt-5 flex cursor-pointer items-start gap-3 text-sm text-zinc-200">
                   <input
@@ -393,23 +386,11 @@ export default function RegisterPage() {
               </Field>
             ) : null}
 
-            {currentStep.id === "nin" ? (
-              <Field label="Enter your NIN (optional)">
-                <Input
-                  inputMode="numeric"
-                  value={nin}
-                  onChange={(event) => setNin(event.target.value.replace(/\D/g, "").slice(0, 11))}
-                  placeholder="11-digit NIN"
-                  className="h-12 border-zinc-800 bg-zinc-900 text-white placeholder:text-zinc-600"
-                />
-              </Field>
-            ) : null}
-
             {currentStep.id === "names" ? (
               <>
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm text-zinc-400">
-                    Confirm the name details that should match your BVN/NIN records.
+                    Confirm the name details that should match your BVN record (and NIN later during tier upgrades).
                   </p>
                   <Button
                     type="button"

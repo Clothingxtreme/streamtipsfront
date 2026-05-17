@@ -32,7 +32,7 @@ export default function DashboardPage() {
   const avgDonation = totalDonations > 0 ? Math.round(totalFromDonations / totalDonations) : 0
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div data-tour="dashboard-main" className="p-6 lg:p-8 space-y-6">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
         <p className="text-zinc-500">Welcome back! Here{"'"}s your streaming overview.</p>

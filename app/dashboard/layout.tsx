@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { DashboardSidebar } from "@/components/dashboard/sidebar"
+import { SafeCreatorGuideTour } from "@/components/onboarding/safe-creator-guide-tour"
 import { useAuth } from "@/app/context/AuthContext"
 
 export default function DashboardLayout({
@@ -32,10 +33,12 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-zinc-950 overflow-x-hidden">
-      <DashboardSidebar mobileOpen={mobileMenuOpen} onMobileOpenChange={setMobileMenuOpen} />
-      <main className="flex-1 overflow-y-auto dashboard-scrollbar pt-14 md:pt-0">
-        {children}
-      </main>
+      <SafeCreatorGuideTour mobileOpen={mobileMenuOpen} onMobileOpenChange={setMobileMenuOpen}>
+        <DashboardSidebar mobileOpen={mobileMenuOpen} onMobileOpenChange={setMobileMenuOpen} />
+        <main className="flex-1 overflow-y-auto dashboard-scrollbar pt-14 md:pt-0">
+          {children}
+        </main>
+      </SafeCreatorGuideTour>
     </div>
   )
 }

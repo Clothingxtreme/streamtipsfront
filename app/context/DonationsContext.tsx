@@ -78,7 +78,7 @@ export const DonationsProvider = ({ children }: { children: ReactNode }) => {
     fetchDonations()
 
     const socket = io(getSocketUrl(), {
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       auth: {
         sessionToken: getStoredSessionToken(),
       },

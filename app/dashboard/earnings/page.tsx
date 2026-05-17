@@ -166,7 +166,7 @@ export default function EarningsPage() {
     }
 
     const socket = io(getSocketUrl(), {
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       auth: {
         sessionToken: getStoredSessionToken(),
       },
@@ -501,7 +501,7 @@ export default function EarningsPage() {
   )
 
   return (
-    <div className="p-6 lg:p-8 space-y-6">
+    <div data-tour="earnings-main" className="p-6 lg:p-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold text-white">Earnings</h1>

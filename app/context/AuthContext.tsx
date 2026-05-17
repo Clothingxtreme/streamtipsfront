@@ -23,7 +23,6 @@ type RegisterInput = {
   password: string
   phoneNumber: string
   bvn?: string
-  nin?: string
   dateOfBirth: string
   firstName: string
   middleName?: string

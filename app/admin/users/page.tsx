@@ -83,7 +83,50 @@ function getVerificationTypesForRequest(type: "bvn" | "nin" | "both") {
   return ["bvn", "nin"] as const
 }
 
+function maskIdentityNumber(value?: string) {
+  const digits = String(value || "").trim()
+  if (!digits) return "Not submitted"
+  if (digits.length <= 4) return digits
+  return `${"*".repeat(Math.max(0, digits.length - 4))}${digits.slice(-4)}`
+}
+
+function resolveIdentityNumber(user: AppUser, type: "bvn" | "nin") {
+  const keyUpper = type === "bvn" ? "Bvn" : "Nin"
+  const identity = (user?.identity || {}) as Record<string, unknown>
+  const root = user as unknown as Record<string, unknown>
+  const candidates = [
+    identity[type],
+    identity[`submitted${keyUpper}`],
+    root[type],
+    root[`submitted${keyUpper}`],
+    root[`submitted${type.toUpperCase()}`],
+  ]
+
+  for (const candidate of candidates) {
+    const value = String(candidate || "").trim()
+    if (value) return value
+  }
+
+  return ""
+}
+
 function buildVerificationResult(payload: any, type: "bvn" | "nin" | "both") {
+  if (typeof payload?.success === "boolean") {
+    const mismatches = Array.isArray(payload?.mismatches) ? payload.mismatches : []
+    const mismatchText = mismatches.length
+      ? mismatches
+          .map((item: any) => `${item?.field || "field"}: ${item?.message || item?.status || "NO_MATCH"}`)
+          .join(" | ")
+      : ""
+    return {
+      ok: payload.success === true,
+      message:
+        payload.success === true
+          ? String(payload?.message || "Identity verification passed and saved.")
+          : [String(payload?.message || "Identity verification failed."), mismatchText].filter(Boolean).join(" | "),
+    }
+  }
+
   const verification = payload?.verification || payload?.user?.identityVerification || {}
   const requestedTypes = getVerificationTypesForRequest(type)
   const failedTypes = requestedTypes.filter((item) => {
@@ -125,6 +168,9 @@ export default function AdminUsersPage() {
   const [editDraft, setEditDraft] = useState<UserDraft>(emptyDraft)
   const [submitting, setSubmitting] = useState(false)
   const [migrationMessage, setMigrationMessage] = useState("")
+  const [identityVisibility, setIdentityVisibility] = useState<
+    Record<string, { bvn: boolean; nin: boolean }>
+  >({})
 
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) || null,
@@ -175,6 +221,16 @@ export default function AdminUsersPage() {
       provisionVirtualAccount: false,
     })
   }, [selectedUser])
+
+  const toggleIdentityVisibility = (userId: string, type: "bvn" | "nin") => {
+    setIdentityVisibility((current) => ({
+      ...current,
+      [userId]: {
+        bvn: type === "bvn" ? !current[userId]?.bvn : Boolean(current[userId]?.bvn),
+        nin: type === "nin" ? !current[userId]?.nin : Boolean(current[userId]?.nin),
+      },
+    }))
+  }
 
   const createUser = async () => {
     setSubmitting(true)
@@ -630,6 +686,44 @@ export default function AdminUsersPage() {
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-white">{user.name}</p>
                         <p className="truncate text-sm text-zinc-500">{user.email}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              toggleIdentityVisibility(user.id, "bvn")
+                            }}
+                            disabled={!user.identity?.hasBvn && !resolveIdentityNumber(user, "bvn")}
+                            className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {identityVisibility[user.id]?.bvn ? "Hide BVN" : "View BVN"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              toggleIdentityVisibility(user.id, "nin")
+                            }}
+                            disabled={!user.identity?.hasNin && !resolveIdentityNumber(user, "nin")}
+                            className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {identityVisibility[user.id]?.nin ? "Hide NIN" : "View NIN"}
+                          </button>
+                        </div>
+                        <div className="mt-2 space-y-1 text-xs text-zinc-400">
+                          <p>
+                            BVN:{" "}
+                            {identityVisibility[user.id]?.bvn
+                              ? resolveIdentityNumber(user, "bvn") || "Not submitted"
+                              : maskIdentityNumber(resolveIdentityNumber(user, "bvn"))}
+                          </p>
+                          <p>
+                            NIN:{" "}
+                            {identityVisibility[user.id]?.nin
+                              ? resolveIdentityNumber(user, "nin") || "Not submitted"
+                              : maskIdentityNumber(resolveIdentityNumber(user, "nin"))}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.18em]">
                         <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-zinc-300">
@@ -767,7 +861,11 @@ export default function AdminUsersPage() {
                     )}>
                       <p className="font-medium">BVN</p>
                       <p className="mt-1 text-xs opacity-80">
-                        {selectedUser.identity?.hasBvn ? `Saved ending in ${selectedUser.identity.bvnLast4 || "****"}` : "No BVN saved"}
+                        {selectedUser.identity?.bvn
+                          ? `Submitted: ${selectedUser.identity.bvn}`
+                          : selectedUser.identity?.hasBvn
+                            ? `Saved ending in ${selectedUser.identity.bvnLast4 || "****"}`
+                            : "No BVN saved"}
                       </p>
                       <p className="mt-1 text-xs">{getVerificationLabel(selectedUser.identityVerification?.bvn?.status)}</p>
                     </div>
@@ -777,7 +875,11 @@ export default function AdminUsersPage() {
                     )}>
                       <p className="font-medium">NIN</p>
                       <p className="mt-1 text-xs opacity-80">
-                        {selectedUser.identity?.hasNin ? `Saved ending in ${selectedUser.identity.ninLast4 || "****"}` : "No NIN saved"}
+                        {selectedUser.identity?.nin
+                          ? `Submitted: ${selectedUser.identity.nin}`
+                          : selectedUser.identity?.hasNin
+                            ? `Saved ending in ${selectedUser.identity.ninLast4 || "****"}`
+                            : "No NIN saved"}
                       </p>
                       <p className="mt-1 text-xs">{getVerificationLabel(selectedUser.identityVerification?.nin?.status)}</p>
                     </div>

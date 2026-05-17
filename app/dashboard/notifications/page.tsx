@@ -244,7 +244,7 @@ export default function NotificationsPage() {
   ]
 
   return (
-    <div className="max-w-6xl space-y-6 p-6 lg:p-8">
+    <div data-tour="notifications-main" className="max-w-6xl space-y-6 p-6 lg:p-8">
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-white">Notifications</h1>
         <p className="text-zinc-500">

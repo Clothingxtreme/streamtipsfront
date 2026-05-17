@@ -549,7 +549,7 @@ export default function Overlay({
 
   useEffect(() => {
     const socket = io(getSocketUrl(), {
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       auth: {
         sessionToken: isPublicOverlay ? "" : getStoredSessionToken(),
         overlayCreatorId: isPublicOverlay ? publicCreatorId : "",

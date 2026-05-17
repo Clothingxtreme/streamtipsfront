@@ -40,6 +40,7 @@ import { OverlayShowcaseSettings } from "@/components/dashboard/overlay-showcase
 import { HelpTip } from "@/components/help-tip"
 import { giftPackThemes } from "@/lib/gifts"
 import { authRequest } from "@/lib/auth-client"
+import { STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT } from "@/hooks/use-onboarding-tour"
 import { cn } from "@/lib/utils"
 import type { AppPreferences } from "@/lib/app-preferences"
 import type { OverlaySettingId } from "@/lib/overlay-settings"
@@ -656,8 +657,14 @@ export default function SettingsPage() {
     }
   }
 
+  const handleRestartGuideTour = () => {
+    window.dispatchEvent(new CustomEvent(STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT))
+    setProfileMessage("Creator guide tour restarted.")
+    setSaveState("idle")
+  }
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6 lg:p-8">
+    <div data-tour="settings-main" className="mx-auto max-w-6xl space-y-6 p-6 lg:p-8">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold text-white">Settings</h1>
@@ -1215,6 +1222,14 @@ export default function SettingsPage() {
                 icon={CreditCard}
               />
               <SummaryRow label="Member since" value={formatMemberDate(user?.createdAt)} />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRestartGuideTour}
+                className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
+              >
+                Restart Guide Tour
+              </Button>
             </div>
           </div>
         </div>

@@ -18,6 +18,8 @@ export interface VirtualAccount {
 export interface UserIdentity {
   hasBvn?: boolean
   hasNin?: boolean
+  bvn?: string
+  nin?: string
   bvnLast4?: string
   ninLast4?: string
   hasDateOfBirth?: boolean
@@ -36,6 +38,8 @@ export interface IdentityVerificationSnapshot {
   matchPercentage?: number
   responseCode?: string
   responseMessage?: string
+  validationError?: string
+  failureReason?: string
   checkedAt?: string
   verifiedAt?: string
 }
@@ -116,6 +120,8 @@ export interface AppUser {
   identityVerification?: IdentityVerification
   payoutProfile?: PayoutProfile
   virtualAccount: VirtualAccount | null
+  onboardingTourCompleted?: boolean
+  onboardingTourCompletedAt?: string
   notificationUnreadCount?: number
   createdAt?: string
 }

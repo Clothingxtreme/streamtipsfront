@@ -22,23 +22,25 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/app/context/AuthContext"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT } from "@/hooks/use-onboarding-tour"
 
 interface NavItem {
   label: string
   href: string
   icon: React.ElementType
+  tourKey: string
 }
 
 const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Donations", href: "/dashboard/donations", icon: History },
-  { label: "Earnings", href: "/dashboard/earnings", icon: Wallet },
-  { label: "Virtual Account", href: "/dashboard/account", icon: CreditCard },
-  { label: "Overlay Settings", href: "/dashboard/overlay", icon: Sparkles },
-  { label: "Create Custom Gift", href: "/dashboard/custom-gifts", icon: Wand2 },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Upgrade Tier", href: "/dashboard/kyc-upgrade", icon: ShieldCheck },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, tourKey: "dashboard" },
+  { label: "Donations", href: "/dashboard/donations", icon: History, tourKey: "donations" },
+  { label: "Earnings", href: "/dashboard/earnings", icon: Wallet, tourKey: "earnings" },
+  { label: "Virtual Account", href: "/dashboard/account", icon: CreditCard, tourKey: "virtual-account" },
+  { label: "Overlay Settings", href: "/dashboard/overlay", icon: Sparkles, tourKey: "overlay-settings" },
+  { label: "Create Custom Gift", href: "/dashboard/custom-gifts", icon: Wand2, tourKey: "custom-gift" },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell, tourKey: "notifications" },
+  { label: "Upgrade Tier", href: "/dashboard/kyc-upgrade", icon: ShieldCheck, tourKey: "upgrade-tier" },
+  { label: "Settings", href: "/dashboard/settings", icon: Settings, tourKey: "settings" },
 ]
 
 type DashboardSidebarProps = {
@@ -51,6 +53,10 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const { logout, user } = useAuth()
+
+  const restartGuideTour = () => {
+    window.dispatchEvent(new CustomEvent(STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT))
+  }
 
   useEffect(() => {
     onMobileOpenChange(false)
@@ -79,7 +85,7 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
       <aside className={cn(
         "hidden h-screen sticky top-0 md:flex flex-col bg-zinc-950 border-r border-zinc-800 transition-all duration-300",
         collapsed ? "w-[72px]" : "w-64"
-      )}>
+      )} data-tour="sidebar">
         {/* Logo */}
         <div className="flex items-center gap-3 p-4 border-b border-zinc-800">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
@@ -98,6 +104,7 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour={item.tourKey}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                   "hover:bg-zinc-800/80",
@@ -116,6 +123,18 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
               </Link>
             )
           })}
+
+          <button
+            type="button"
+            onClick={restartGuideTour}
+            className={cn(
+              "flex w-full items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+              "text-cyan-300 hover:text-cyan-100 hover:bg-cyan-500/10 border border-cyan-500/20",
+            )}
+          >
+            <Sparkles className="h-5 w-5 shrink-0" />
+            {!collapsed && <span className="text-sm font-medium">Guide Tour</span>}
+          </button>
         </nav>
 
         {/* Bottom section */}
@@ -175,7 +194,10 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
             onClick={() => onMobileOpenChange(false)}
             aria-label="Close dashboard menu backdrop"
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[84vw] max-w-[320px] flex-col border-r border-zinc-800 bg-zinc-950 shadow-2xl">
+          <aside
+            className="absolute inset-y-0 left-0 flex w-[84vw] max-w-[320px] flex-col border-r border-zinc-800 bg-zinc-950 shadow-2xl"
+            data-tour-mobile="sidebar"
+          >
             <div className="flex items-center justify-between border-b border-zinc-800 p-4">
               <div className="flex items-center gap-2">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
@@ -200,6 +222,7 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
                   <Link
                     key={item.href}
                     href={item.href}
+                    data-tour-mobile={item.tourKey}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
                       "hover:bg-zinc-800/80",
@@ -214,6 +237,21 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
                   </Link>
                 )
               })}
+
+              <button
+                type="button"
+                onClick={() => {
+                  restartGuideTour()
+                  onMobileOpenChange(false)
+                }}
+                className={cn(
+                  "flex w-full items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                  "text-cyan-300 hover:text-cyan-100 hover:bg-cyan-500/10 border border-cyan-500/20",
+                )}
+              >
+                <Sparkles className="h-5 w-5 shrink-0" />
+                <span className="text-sm font-medium">Guide Tour</span>
+              </button>
             </nav>
 
             <div className="space-y-2 border-t border-zinc-800 p-3">
