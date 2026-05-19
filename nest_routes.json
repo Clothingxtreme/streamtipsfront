@@ -1,0 +1,317 @@
+[
+  {
+    "method": "GET",
+    "path": "/admin/auth/me",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\auth\\auth.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/admin/banks",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\admin\\admin-finance.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/auth/me",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\auth\\auth.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/banks",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\payouts\\payouts.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/donations",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\donations\\donations.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/donations/:id",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\donations\\donations.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\health\\health.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/kyc/upgrade-options",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\users.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/notifications",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\users.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/overlay-state",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\overlay\\overlay.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/overlay-state/public/overlay/:creatorId",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\overlay\\overlay.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/overlay-state/uploads/gift-sounds/:soundId",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\overlay\\overlay.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/payouts",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\payouts\\payouts.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/compliance-inflows",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-compliance-inflows.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/compliance-inflows/:id",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-compliance-inflows.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/compliance-inflows/report",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-compliance-inflows.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/donations",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-donations.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/donations/:id",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-donations.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/kyc-upgrade-submissions",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\portal-kyc-upgrades.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/public/banks",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\payouts\\payouts.controller.ts"
+  },
+  {
+    "method": "GET",
+    "path": "/user",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\users.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/portal/compliance-inflows/:id",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-compliance-inflows.controller.ts"
+  },
+  {
+    "method": "PATCH",
+    "path": "/user/onboarding-tour",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\users.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/admin/auth/login",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\auth\\auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/admin/auth/logout",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\auth\\auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/admin/bank-account-name-enquiry",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\admin\\admin-finance.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/admin/users/:id/identity-verification",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\admin\\admin-users.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/webhooks/paystack",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\webhooks\\webhooks.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/auth/login",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\auth\\auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/auth/logout",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\auth\\auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/auth/register",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\auth\\auth.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/bank-account-name-enquiry",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\payouts\\payouts.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/donations/:id/approve-review",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\donations\\donations.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/donations/:id/reject-review",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\donations\\donations.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/donations/:id/sync-provider",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\donations\\donations.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/kyc/upgrade-submission",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\users.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/notifications/:id/read",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\users.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/notifications/read-all",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\users.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/overlay-state/overlay-sound-upload",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\overlay\\overlay.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/overlay-state/overlay-sound-upload-json",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\overlay\\overlay.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/payout-profile",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\payouts\\payouts.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/payout-profile/change-request",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\payouts\\payouts.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/payouts",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\payouts\\payouts.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/donations/:id/approve-review",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-donations.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/donations/:id/reject-review",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-donations.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/donations/:id/sync-provider",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-donations.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/kyc-upgrade-submissions/:id/approve",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\portal-kyc-upgrades.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/kyc-upgrade-submissions/:id/reject",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\portal-kyc-upgrades.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/users/:id/identity-verification",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\portal-kyc-upgrades.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/public/bank-account-name-enquiry",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\payouts\\payouts.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/users/:id/virtual-account",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\virtual-accounts.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/users/:id/virtual-account/requery",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\virtual-accounts.controller.ts"
+  },
+  {
+    "method": "POST",
+    "path": "/webhook/monnify",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\webhooks\\webhooks.controller.ts"
+  },
+  {
+    "method": "PUT",
+    "path": "/overlay-state",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\overlay\\overlay.controller.ts"
+  },
+  {
+    "method": "PUT",
+    "path": "/user",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\users.controller.ts"
+  },
+  {
+    "method": "USE",
+    "path": "/",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\payouts\\payouts.controller.ts"
+  },
+  {
+    "method": "USE",
+    "path": "/admin",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\admin\\admin-finance.controller.ts"
+  },
+  {
+    "method": "USE",
+    "path": "/donations",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\donations\\donations.controller.ts"
+  },
+  {
+    "method": "USE",
+    "path": "/overlay-state",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\overlay\\overlay.controller.ts"
+  },
+  {
+    "method": "USE",
+    "path": "/portal",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\portal-kyc-upgrades.controller.ts"
+  },
+  {
+    "method": "USE",
+    "path": "/portal/compliance-inflows",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-compliance-inflows.controller.ts"
+  },
+  {
+    "method": "USE",
+    "path": "/portal/donations",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\portal\\admin-donations.controller.ts"
+  },
+  {
+    "method": "USE",
+    "path": "/users/:id/virtual-account",
+    "file": "C:\\Users\\Senpai\\Downloads\\streamtip-share-with-env\\NewBackend\\src\\users\\virtual-accounts.controller.ts"
+  }
+]

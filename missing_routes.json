@@ -1,0 +1,170 @@
+[
+  {
+    "method": "USE",
+    "path": "/uploads"
+  },
+  {
+    "method": "POST",
+    "path": "/auth/oauth/google"
+  },
+  {
+    "method": "POST",
+    "path": "/auth/oauth/apple"
+  },
+  {
+    "method": "POST",
+    "path": "/monnify/test-donation"
+  },
+  {
+    "method": "GET",
+    "path": "/uploads/gift-sounds/:soundId"
+  },
+  {
+    "method": "POST",
+    "path": "/overlay-sound-upload"
+  },
+  {
+    "method": "POST",
+    "path": "/overlay-sound-upload-json"
+  },
+  {
+    "method": "GET",
+    "path": "/public/overlay/:creatorId"
+  },
+  {
+    "method": "GET",
+    "path": "/kyc/upgrade-submissions"
+  },
+  {
+    "method": "GET",
+    "path": "/admin/overview"
+  },
+  {
+    "method": "GET",
+    "path": "/admin/logs"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/donations/report"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/settlements"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/settlements/history"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/settlements/report"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/settlements/:id/approve"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/settlements/:id/authorize"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/settlements/:id/resend-otp"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/settlements/:id/retry"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/settlements/:id/reject"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/users"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/users/:id"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/users/:id/paystack-requery"
+  },
+  {
+    "method": "PATCH",
+    "path": "/portal/users/:id"
+  },
+  {
+    "method": "GET",
+    "path": "/portal/payout-profile-change-requests"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/payout-profile-change-requests/:id/approve"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/payout-profile-change-requests/:id/reject"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/payouts/reconcile"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/payouts/release-stuck-pending"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/payouts/:id/fail"
+  },
+  {
+    "method": "POST",
+    "path": "/portal/payouts/:id/cancel"
+  },
+  {
+    "method": "GET",
+    "path": "/admin/users"
+  },
+  {
+    "method": "DELETE",
+    "path": "/admin/users/:id"
+  },
+  {
+    "method": "POST",
+    "path": "/admin/users"
+  },
+  {
+    "method": "PATCH",
+    "path": "/admin/users/:id"
+  },
+  {
+    "method": "POST",
+    "path": "/admin/users/:id/virtual-account"
+  },
+  {
+    "method": "POST",
+    "path": "/admin/users/:id/virtual-account/sync"
+  },
+  {
+    "method": "GET",
+    "path": "/admin/paystack/migration-candidates"
+  },
+  {
+    "method": "POST",
+    "path": "/admin/paystack/migrate-virtual-accounts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/admin/users/:id/virtual-account"
+  },
+  {
+    "method": "GET",
+    "path": "/admin/platform-withdrawals"
+  },
+  {
+    "method": "POST",
+    "path": "/admin/platform-withdrawals"
+  }
+]

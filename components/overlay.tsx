@@ -208,6 +208,12 @@ function isSettledDonation(value: IncomingDonation) {
     !["pending", "pending_review", "rejected", "failed"].includes(status)
 }
 
+function isPendingDonation(value: IncomingDonation) {
+  const walletStatus = String(value.walletStatus || "").toLowerCase()
+  const status = String(value.status || "").toLowerCase()
+  return ["pending", "pending_review"].includes(walletStatus) || ["pending", "pending_review"].includes(status)
+}
+
 type OverlayProps = {
   publicCreatorId?: string
   initialPublicState?: PublicOverlayStatePayload | null
@@ -475,8 +481,10 @@ export default function Overlay({
         ),
         amount: parseDonationAmount(incoming.amount),
       }
+      const settledDonation = isSettledDonation(incoming)
+      const allowPendingAlert = forceAlert && isPendingDonation(incoming)
 
-      if (!isSettledDonation(incoming)) {
+      if (!settledDonation && !allowPendingAlert) {
         return
       }
 
@@ -494,7 +502,7 @@ export default function Overlay({
         void playGiftSound(fullDonation.amount)
       }
 
-      if (updateTotals) {
+      if (updateTotals && settledDonation) {
         setTotalDonations((current) => current + fullDonation.amount)
         setContributors((current) => {
           const match = current.find((contributor) => contributor.name === fullDonation.senderName)
@@ -572,13 +580,13 @@ export default function Overlay({
         date: data.date,
         createdAt: data.createdAt,
       }
-
-      if (!isSettledDonation(incomingDonation)) {
-        return
-      }
+      const settledDonation = isSettledDonation(incomingDonation)
 
       shownDonationIdsRef.current.add(getDonationIdentity(incomingDonation))
-      processDonation(incomingDonation)
+      processDonation(
+        incomingDonation,
+        settledDonation ? undefined : { updateTotals: false, forceAlert: true },
+      )
     })
 
     return () => {

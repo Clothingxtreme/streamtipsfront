@@ -22,7 +22,7 @@ import { authRequest } from "@/lib/auth-client"
 const fallbackAccount = {
   accountName: "No virtual account yet",
   accountNumber: "Register a user first",
-  bankName: "Paystack",
+  bankName: "Bank",
   accountReference: "Pending registration",
 }
 
@@ -37,12 +37,15 @@ export default function VirtualAccountPage() {
   const [provisionFeedback, setProvisionFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null)
   const [showVerifyBvnPrompt, setShowVerifyBvnPrompt] = useState(false)
   const { user, refreshUser } = useAuth()
+  const isCollectionPaused = Boolean((user as any)?.donationCollectionPaused)
+  const collectionProvider = String((user as any)?.collectionProvider || user?.virtualAccount?.provider || "paystack").toLowerCase()
+  const providerLabel = collectionProvider === "monnify" ? "Monnify" : "Paystack"
   const isSandboxAccount = user?.virtualAccount?.provider === "monnify"
   const needsProvisioning =
     Boolean(user?.id) &&
     (!user?.virtualAccount?.accountNumber ||
       user?.virtualAccount?.status !== "active" ||
-      user?.virtualAccount?.provider !== "paystack")
+      String(user?.virtualAccount?.provider || "").toLowerCase() !== collectionProvider)
 
   const retryProvisioning = async () => {
     if (!user?.id) {
@@ -62,13 +65,13 @@ export default function VirtualAccountPage() {
         if (String(payload?.code || "") === "BVN_VERIFICATION_REQUIRED") {
           setShowVerifyBvnPrompt(true)
         }
-        throw new Error(payload.error || "Could not provision your Paystack virtual account.")
+        throw new Error(payload.error || `Could not provision your ${providerLabel} virtual account.`)
       }
 
       await refreshUser()
       setProvisionFeedback({
         type: "success",
-        message: "Your Paystack dedicated virtual account has been refreshed.",
+        message: `Your ${providerLabel} dedicated virtual account has been refreshed.`,
       })
     } catch (error) {
       if (
@@ -82,7 +85,7 @@ export default function VirtualAccountPage() {
         message:
           error instanceof Error
             ? error.message
-            : "Could not provision your Paystack virtual account.",
+            : `Could not provision your ${providerLabel} virtual account.`,
       })
     } finally {
       setIsProvisioning(false)
@@ -130,6 +133,19 @@ export default function VirtualAccountPage() {
 
   const accountData = user?.virtualAccount || fallbackAccount
 
+  if (isCollectionPaused) {
+    return (
+      <div data-tour="virtual-account-main" className="p-6 max-w-3xl">
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6">
+          <h1 className="text-2xl font-bold text-white">Virtual Account Paused</h1>
+          <p className="mt-3 text-sm text-amber-100">
+            Virtual-account donations are temporarily paused during payout migration. Existing balances are safe, and updates will be announced in your notifications.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const copyToClipboard = async (text: string, field: string) => {
     await navigator.clipboard.writeText(text)
     setCopiedField(field)
@@ -166,7 +182,7 @@ export default function VirtualAccountPage() {
         <div>
         <h1 className="text-2xl font-bold text-white">Virtual Account</h1>
         <p className="text-zinc-400 mt-1">
-          Your Paystack dedicated virtual account for receiving donations
+          {`Your ${providerLabel} dedicated virtual account for receiving donations`}
         </p>
         </div>
 
@@ -298,7 +314,7 @@ export default function VirtualAccountPage() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Provider</p>
-                <p className="mt-1 text-sm text-zinc-300">Paystack Dedicated Virtual Account</p>
+                <p className="mt-1 text-sm text-zinc-300">{`${providerLabel} Dedicated Virtual Account`}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Environment</p>
@@ -330,7 +346,7 @@ export default function VirtualAccountPage() {
                 disabled={isProvisioning}
                 className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isProvisioning ? "Provisioning..." : "Provision Paystack account"}
+                {isProvisioning ? "Provisioning..." : `Provision ${providerLabel} account`}
               </button>
             ) : null}
 
@@ -394,7 +410,7 @@ export default function VirtualAccountPage() {
               <div>
                 <h3 className="font-semibold text-white">Send & Appear on Stream</h3>
                 <p className="text-sm text-zinc-400 mt-1">
-                  Complete the transfer and your donation can be verified through Paystack webhooks.
+                  {`Complete the transfer and your donation can be verified through ${providerLabel} webhooks.`}
                 </p>
               </div>
             </div>
@@ -409,7 +425,7 @@ export default function VirtualAccountPage() {
           </div>
           <div>
             <p className="text-sm font-medium text-white">Secure Payments</p>
-            <p className="text-xs text-zinc-500">Backed by Paystack</p>
+            <p className="text-xs text-zinc-500">{`Backed by ${providerLabel}`}</p>
           </div>
         </div>
 
