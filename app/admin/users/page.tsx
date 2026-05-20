@@ -57,6 +57,7 @@ const emptyDraft: UserDraft = {
   status: "active",
   provisionVirtualAccount: false,
 }
+const PAYSTACK_ENABLED = String(process.env.NEXT_PUBLIC_PAYSTACK_ENABLED || "false").toLowerCase() === "true"
 
 function getUserDisplayName(user: AppUser) {
   return [user.firstName || user.identity?.firstName, user.middleName || user.identity?.middleName, user.lastName || user.identity?.lastName]
@@ -516,6 +517,7 @@ export default function AdminUsersPage() {
         </p>
       </div>
 
+      {PAYSTACK_ENABLED ? (
       <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -545,6 +547,7 @@ export default function AdminUsersPage() {
         </div>
         {migrationMessage ? <p className="mt-3 text-sm text-cyan-100">{migrationMessage}</p> : null}
       </div>
+      ) : null}
 
       {message ? (
         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
@@ -644,7 +647,7 @@ export default function AdminUsersPage() {
                 }
                 className="h-4 w-4 accent-cyan-500"
               />
-              Create Paystack DVA after saving
+                    Create virtual account after saving
             </label>
 
             <Button
@@ -955,15 +958,14 @@ export default function AdminUsersPage() {
                     disabled={
                       submitting ||
                       Boolean(
-                        selectedUser.virtualAccount?.provider === "paystack" &&
-                          selectedUser.virtualAccount?.accountNumber &&
+                        selectedUser.virtualAccount?.accountNumber &&
                           selectedUser.virtualAccount?.status === "active",
                       )
                     }
                     className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
                   >
                     <WalletCards className="mr-2 h-4 w-4" />
-                    Create Paystack DVA
+                    Create Virtual Account
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>

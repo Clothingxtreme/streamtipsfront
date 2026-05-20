@@ -41,8 +41,15 @@ type Donation = {
   amount: number
   creatorShare?: number
   walletStatus?: "available" | "pending_review" | "rejected"
+  fundsFlow?: "wallet" | "direct_split"
   date?: string
   createdAt?: string
+}
+
+type PayoutFilterItem = {
+  amount?: number
+  status?: string
+  createdAt?: string | Date
 }
 
 type WithdrawResult =
@@ -61,6 +68,14 @@ type WithdrawResult =
 const MIN_WITHDRAWAL = 5000
 const PLATFORM_FEE_RATE = 0.2
 const CREATOR_SHARE_RATE = 0.8
+type DonationFilterMode = "all" | "single" | "range"
+
+type DonationDateFilter = {
+  mode: DonationFilterMode
+  date: string
+  from: string
+  to: string
+}
 
 function normalizePayoutStatus(status: unknown): Payout["status"] {
   if (
@@ -108,11 +123,111 @@ function normalizeDate(value?: string) {
   return new Date(value || Date.now())
 }
 
+function buildDonationsQuery(filter: DonationDateFilter) {
+  const params = new URLSearchParams()
+
+  if (filter.mode === "single" && filter.date) {
+    params.set("date", filter.date)
+  }
+
+  if (filter.mode === "range") {
+    if (filter.from) params.set("from", filter.from)
+    if (filter.to) params.set("to", filter.to)
+  }
+
+  const query = params.toString()
+  return query ? `/donations?${query}` : "/donations"
+}
+
+function matchesDonationDateFilter(donation: Donation, filter: DonationDateFilter) {
+  if (filter.mode === "all") return true
+  const source = donation.date || donation.createdAt
+  if (!source) return false
+  const itemDate = normalizeDate(source)
+  if (Number.isNaN(itemDate.getTime())) return false
+
+  if (filter.mode === "single") {
+    if (!filter.date) return true
+    const singleStart = new Date(filter.date)
+    if (Number.isNaN(singleStart.getTime())) return true
+    singleStart.setHours(0, 0, 0, 0)
+    const singleEnd = new Date(singleStart)
+    singleEnd.setHours(23, 59, 59, 999)
+    return itemDate >= singleStart && itemDate <= singleEnd
+  }
+
+  if (filter.from) {
+    const fromDate = new Date(filter.from)
+    if (!Number.isNaN(fromDate.getTime())) {
+      fromDate.setHours(0, 0, 0, 0)
+      if (itemDate < fromDate) return false
+    }
+  }
+
+  if (filter.to) {
+    const toDate = new Date(filter.to)
+    if (!Number.isNaN(toDate.getTime())) {
+      toDate.setHours(23, 59, 59, 999)
+      if (itemDate > toDate) return false
+    }
+  }
+
+  return true
+}
+
+function matchesDateFilterByValue(value: string | Date | undefined, filter: DonationDateFilter) {
+  if (filter.mode === "all") return true
+  if (!value) return false
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return false
+
+  if (filter.mode === "single") {
+    if (!filter.date) return true
+    const singleStart = new Date(filter.date)
+    if (Number.isNaN(singleStart.getTime())) return true
+    singleStart.setHours(0, 0, 0, 0)
+    const singleEnd = new Date(singleStart)
+    singleEnd.setHours(23, 59, 59, 999)
+    return date >= singleStart && date <= singleEnd
+  }
+
+  if (filter.from) {
+    const fromDate = new Date(filter.from)
+    if (!Number.isNaN(fromDate.getTime())) {
+      fromDate.setHours(0, 0, 0, 0)
+      if (date < fromDate) return false
+    }
+  }
+
+  if (filter.to) {
+    const toDate = new Date(filter.to)
+    if (!Number.isNaN(toDate.getTime())) {
+      toDate.setHours(23, 59, 59, 999)
+      if (date > toDate) return false
+    }
+  }
+
+  return true
+}
+
 export default function EarningsPage() {
   const { user, isAuthenticated } = useAuth()
+  const showManualWithdrawal = false
+  const todayIso = new Date().toISOString().slice(0, 10)
   const [donations, setDonations] = useState<Donation[]>([])
   const [totalEarnings, setTotalEarnings] = useState(0)
   const [payouts, setPayouts] = useState<Payout[]>([])
+  const [donationsLoading, setDonationsLoading] = useState(false)
+  const [dateFilterMode, setDateFilterMode] = useState<DonationFilterMode>("all")
+  const [singleDate, setSingleDate] = useState(todayIso)
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
+  const [appliedFilter, setAppliedFilter] = useState<DonationDateFilter>({
+    mode: "all",
+    date: "",
+    from: "",
+    to: "",
+  })
   const [showWithdraw, setShowWithdraw] = useState(false)
   const [withdrawAmount, setWithdrawAmount] = useState("")
   const [loading, setLoading] = useState(false)
@@ -125,7 +240,8 @@ export default function EarningsPage() {
       return
     }
 
-    void authRequest("/donations")
+    setDonationsLoading(true)
+    void authRequest(buildDonationsQuery(appliedFilter))
       .then((res) => res.json())
       .then((data) => {
         const nextDonations = Array.isArray(data) ? data : []
@@ -137,7 +253,10 @@ export default function EarningsPage() {
 
         setTotalEarnings(total)
       })
-  }, [isAuthenticated])
+      .finally(() => {
+        setDonationsLoading(false)
+      })
+  }, [appliedFilter, isAuthenticated])
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -179,6 +298,10 @@ export default function EarningsPage() {
 
       const amount = Number(data.amount) || 0
 
+      if (!matchesDonationDateFilter(data, appliedFilter)) {
+        return
+      }
+
       setDonations((prev) => [data, ...prev])
       setTotalEarnings((prev) => prev + amount)
     })
@@ -213,7 +336,7 @@ export default function EarningsPage() {
     return () => {
       socket.disconnect()
     }
-  }, [isAuthenticated, user])
+  }, [appliedFilter, isAuthenticated, user])
 
   const weeklyData = useMemo(() => {
     const grouped = donations.reduce((acc: { label: string; amount: number }[], donation) => {
@@ -278,20 +401,45 @@ export default function EarningsPage() {
       }, 0),
     [payouts],
   )
+  const filteredDeductedPayoutTotal = useMemo(
+    () =>
+      payouts.reduce((sum, payout: PayoutFilterItem) => {
+        const status = String(payout.status || "").toLowerCase()
+        if (status === "failed" || status === "rejected" || status === "cancelled") {
+          return sum
+        }
+
+        if (!matchesDateFilterByValue(payout.createdAt, appliedFilter)) {
+          return sum
+        }
+
+        return sum + (Number(payout.amount) || 0)
+      }, 0),
+    [appliedFilter, payouts],
+  )
   const platformFeeReserved = Math.round(totalEarnings * PLATFORM_FEE_RATE)
   const creatorShareBalance = donations.reduce((sum, donation) => {
+    if ((donation.fundsFlow || "wallet") === "direct_split") return sum
     if ((donation.walletStatus || "available") !== "available") return sum
     return sum + (Number(donation.creatorShare) || Math.round((Number(donation.amount) || 0) * CREATOR_SHARE_RATE))
   }, 0)
   const storedCreatorShareBalance = Number(user?.wallet?.availableBalance || 0)
-  const withdrawableCreatorShareBalance = Math.max(storedCreatorShareBalance, creatorShareBalance)
+  const withdrawableCreatorShareBalance =
+    appliedFilter.mode === "all"
+      ? Math.max(storedCreatorShareBalance, creatorShareBalance)
+      : Math.max(0, creatorShareBalance)
   const pendingReviewFromDonations = donations.reduce((sum, donation) => {
+    if ((donation.fundsFlow || "wallet") === "direct_split") return sum
     if (donation.walletStatus !== "pending_review") return sum
     return sum + (Number(donation.creatorShare) || Math.round((Number(donation.amount) || 0) * CREATOR_SHARE_RATE))
   }, 0)
   const pendingReviewBalance =
     Math.max(Number(user?.wallet?.pendingBalance || 0), pendingReviewFromDonations)
-  const availableBalance = Math.max(0, withdrawableCreatorShareBalance - deductedPayoutTotal)
+  const availableBalance = Math.max(
+    0,
+    withdrawableCreatorShareBalance -
+      (appliedFilter.mode === "all" ? deductedPayoutTotal : filteredDeductedPayoutTotal),
+  )
   const payoutProfile = user?.payoutProfile
   const hasLockedPayoutProfile = Boolean(
     payoutProfile?.locked &&
@@ -508,16 +656,118 @@ export default function EarningsPage() {
           <p className="text-zinc-500">Track your income and manage payouts.</p>
         </div>
 
-        <Button
-          onClick={() => {
-            setWithdrawResult(null)
-            setShowWithdraw(true)
-          }}
-          className="h-11 px-5 bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white"
-        >
-          <ArrowDownToLine className="h-4 w-4" />
-          Withdraw Funds
-        </Button>
+        {showManualWithdrawal ? (
+          <Button
+            onClick={() => {
+              setWithdrawResult(null)
+              setShowWithdraw(true)
+            }}
+            className="h-11 px-5 bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white"
+          >
+            <ArrowDownToLine className="h-4 w-4" />
+            Withdraw Funds
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 sm:p-5 space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant={dateFilterMode === "all" ? "default" : "outline"}
+            className={dateFilterMode === "all" ? "bg-white text-black hover:bg-white/90" : "border-zinc-700 text-zinc-300"}
+            onClick={() => setDateFilterMode("all")}
+          >
+            All time
+          </Button>
+          <Button
+            type="button"
+            variant={dateFilterMode === "single" ? "default" : "outline"}
+            className={dateFilterMode === "single" ? "bg-white text-black hover:bg-white/90" : "border-zinc-700 text-zinc-300"}
+            onClick={() => setDateFilterMode("single")}
+          >
+            Single date
+          </Button>
+          <Button
+            type="button"
+            variant={dateFilterMode === "range" ? "default" : "outline"}
+            className={dateFilterMode === "range" ? "bg-white text-black hover:bg-white/90" : "border-zinc-700 text-zinc-300"}
+            onClick={() => setDateFilterMode("range")}
+          >
+            Date range
+          </Button>
+        </div>
+
+        {dateFilterMode === "single" ? (
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-400 uppercase tracking-wide">Date</p>
+              <Input
+                type="date"
+                value={singleDate}
+                onChange={(event) => setSingleDate(event.target.value)}
+                className="h-10 bg-zinc-900 border-zinc-700 text-zinc-100"
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {dateFilterMode === "range" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-400 uppercase tracking-wide">From</p>
+              <Input
+                type="date"
+                value={fromDate}
+                onChange={(event) => setFromDate(event.target.value)}
+                className="h-10 bg-zinc-900 border-zinc-700 text-zinc-100"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-zinc-400 uppercase tracking-wide">To</p>
+              <Input
+                type="date"
+                value={toDate}
+                onChange={(event) => setToDate(event.target.value)}
+                className="h-10 bg-zinc-900 border-zinc-700 text-zinc-100"
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            className="h-10 bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90"
+            onClick={() => {
+              setAppliedFilter({
+                mode: dateFilterMode,
+                date: dateFilterMode === "single" ? singleDate : "",
+                from: dateFilterMode === "range" ? fromDate : "",
+                to: dateFilterMode === "range" ? toDate : "",
+              })
+            }}
+          >
+            Apply filter
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 border-zinc-700 text-zinc-300"
+            onClick={() => {
+              setDateFilterMode("all")
+              setSingleDate(todayIso)
+              setFromDate("")
+              setToDate("")
+              setAppliedFilter({ mode: "all", date: "", from: "", to: "" })
+            }}
+          >
+            Clear
+          </Button>
+          {donationsLoading ? (
+            <span className="self-center text-xs text-zinc-400">Refreshing earnings…</span>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -583,7 +833,7 @@ export default function EarningsPage() {
               {formatCurrency(Number(availableBalance) || 0)}
             </p>
             <p className="text-sm text-zinc-300">
-              Creators can withdraw up to 80% of earnings. The platform automatically reserves 20%.
+              This balance reflects your selected date filter and wallet-era earnings only.
             </p>
           </div>
 
@@ -595,8 +845,8 @@ export default function EarningsPage() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Speed</p>
-              <p className="mt-1 text-base font-semibold text-white">Instant - 24hrs</p>
+              <p className="text-xs uppercase tracking-wide text-zinc-400">Settlement</p>
+              <p className="mt-1 text-base font-semibold text-white">Monnify auto-split</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
               <p className="text-xs uppercase tracking-wide text-zinc-400">Pending Review</p>
@@ -616,12 +866,12 @@ export default function EarningsPage() {
       <PayoutsTable payouts={payouts} />
 
       <Dialog
-        open={showWithdraw}
+        open={showManualWithdrawal && showWithdraw}
         onOpenChange={(open) => {
           if (!open && !loading) {
             closeWithdrawModal()
             setWithdrawResult(null)
-          } else {
+          } else if (showManualWithdrawal) {
             setShowWithdraw(open)
           }
         }}

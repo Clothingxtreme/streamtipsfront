@@ -38,9 +38,19 @@ export default function VirtualAccountPage() {
   const [showVerifyBvnPrompt, setShowVerifyBvnPrompt] = useState(false)
   const { user, refreshUser } = useAuth()
   const isCollectionPaused = Boolean((user as any)?.donationCollectionPaused)
-  const collectionProvider = String((user as any)?.collectionProvider || user?.virtualAccount?.provider || "paystack").toLowerCase()
+  const collectionProvider = String((user as any)?.collectionProvider || user?.virtualAccount?.provider || "monnify").toLowerCase()
   const providerLabel = collectionProvider === "monnify" ? "Monnify" : "Paystack"
-  const isSandboxAccount = user?.virtualAccount?.provider === "monnify"
+  const providerAccountTypeLabel =
+    collectionProvider === "monnify" ? "reserved account" : "dedicated virtual account"
+  const providerReferenceLabel =
+    collectionProvider === "monnify" ? "Monnify reservation details" : "Paystack assignment details"
+  const providerDescriptor =
+    collectionProvider === "monnify"
+      ? "Monnify Reserved Account"
+      : "Paystack Dedicated Virtual Account"
+  const isSandboxAccount =
+    user?.virtualAccount?.provider === "monnify" &&
+    String(user?.virtualAccount?.environment || "").toLowerCase() === "sandbox"
   const needsProvisioning =
     Boolean(user?.id) &&
     (!user?.virtualAccount?.accountNumber ||
@@ -71,7 +81,7 @@ export default function VirtualAccountPage() {
       await refreshUser()
       setProvisionFeedback({
         type: "success",
-        message: `Your ${providerLabel} dedicated virtual account has been refreshed.`,
+        message: `Your ${providerLabel} ${providerAccountTypeLabel} has been refreshed.`,
       })
     } catch (error) {
       if (
@@ -182,7 +192,7 @@ export default function VirtualAccountPage() {
         <div>
         <h1 className="text-2xl font-bold text-white">Virtual Account</h1>
         <p className="text-zinc-400 mt-1">
-          {`Your ${providerLabel} dedicated virtual account for receiving donations`}
+          {`Your ${providerLabel} ${providerAccountTypeLabel} for receiving donations`}
         </p>
         </div>
 
@@ -299,7 +309,7 @@ export default function VirtualAccountPage() {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-white">Account Reference</h2>
-                <p className="text-sm text-zinc-500">Paystack assignment details</p>
+                <p className="text-sm text-zinc-500">{providerReferenceLabel}</p>
               </div>
             </div>
           </div>
@@ -314,7 +324,7 @@ export default function VirtualAccountPage() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Provider</p>
-                <p className="mt-1 text-sm text-zinc-300">{`${providerLabel} Dedicated Virtual Account`}</p>
+                <p className="mt-1 text-sm text-zinc-300">{providerDescriptor}</p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Environment</p>
@@ -324,7 +334,16 @@ export default function VirtualAccountPage() {
               </div>
               <div>
                 <p className="text-xs uppercase tracking-wide text-zinc-500">Status</p>
-                <p className="mt-1 text-sm text-emerald-400">
+                <p
+                  className={cn(
+                    "mt-1 text-sm",
+                    String(user?.virtualAccount?.status || "").toLowerCase() === "active"
+                      ? "text-emerald-400"
+                      : String(user?.virtualAccount?.status || "").toLowerCase() === "failed"
+                        ? "text-red-300"
+                        : "text-amber-300",
+                  )}
+                >
                   {user?.virtualAccount?.status || "Awaiting registration"}
                 </p>
               </div>
