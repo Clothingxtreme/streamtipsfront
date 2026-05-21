@@ -169,7 +169,7 @@ export default function EarningsPage() {
     }
 
     const socket = io(getSocketUrl(), {
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
       auth: {
         sessionToken: getStoredSessionToken(),
       },
@@ -803,7 +803,7 @@ export default function EarningsPage() {
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-zinc-500">Creator share (80%)</span>
                         <span className="font-medium text-emerald-300">
-                          {formatCurrency(creatorShareBalance)}
+                          {formatCurrency(monnifySplitCreatorBalanceToday)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
@@ -883,4 +883,5 @@ export default function EarningsPage() {
     </div>
   )
 }
+
 

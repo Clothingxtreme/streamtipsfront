@@ -85,7 +85,10 @@ export async function fetchPublicOverlayState(creatorId: string) {
   const response = await fetch(
     `${getApiBaseUrl()}/public/overlay/${encodeURIComponent(creatorId)}`,
     {
-      cache: "no-store",
+      cache: "default",
+      headers: {
+        Accept: "application/json",
+      },
     },
   )
 

@@ -242,6 +242,8 @@ export default function Overlay({
   const audioContextRef = useRef<AudioContext | null>(null)
   const shownDonationIdsRef = useRef<Set<string>>(new Set())
   const overlayMountedAtRef = useRef(Date.now())
+  const socketConnectedRef = useRef(false)
+  const lastRealtimeEventAtRef = useRef(0)
 
   const [combo, setCombo] = useState({
     senderName: "",
@@ -413,23 +415,58 @@ export default function Overlay({
     }
 
     let cancelled = false
+    let refreshDelayMs = 9000
+    let timer: number | null = null
+    let inFlight = false
 
-    const refreshPublicState = () => {
+    const scheduleNext = (delayMs: number) => {
+      if (cancelled) {
+        return
+      }
+
+      timer = window.setTimeout(runRefresh, delayMs)
+    }
+
+    const runRefresh = () => {
+      if (cancelled || inFlight) {
+        return
+      }
+
+      const now = Date.now()
+      const isHidden = document.visibilityState === "hidden"
+      const recentlyUpdatedBySocket =
+        socketConnectedRef.current &&
+        now - lastRealtimeEventAtRef.current < 15000
+
+      if (isHidden || recentlyUpdatedBySocket) {
+        scheduleNext(isHidden ? 25000 : 12000)
+        return
+      }
+
+      inFlight = true
       void fetchPublicOverlayState(publicCreatorId)
         .then((state) => {
           if (!cancelled) {
             setPublicState(state)
           }
+          refreshDelayMs = 9000
         })
-        .catch(() => undefined)
+        .catch(() => {
+          refreshDelayMs = Math.min(30000, Math.round(refreshDelayMs * 1.5))
+        })
+        .finally(() => {
+          inFlight = false
+          scheduleNext(refreshDelayMs)
+        })
     }
 
-    refreshPublicState()
-    const timer = window.setInterval(refreshPublicState, 5000)
+    scheduleNext(0)
 
     return () => {
       cancelled = true
-      window.clearInterval(timer)
+      if (timer !== null) {
+        window.clearTimeout(timer)
+      }
     }
   }, [isPublicOverlay, publicCreatorId])
 
@@ -557,7 +594,7 @@ export default function Overlay({
 
   useEffect(() => {
     const socket = io(getSocketUrl(), {
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
       auth: {
         sessionToken: isPublicOverlay ? "" : getStoredSessionToken(),
         overlayCreatorId: isPublicOverlay ? publicCreatorId : "",
@@ -568,6 +605,7 @@ export default function Overlay({
       if (publicCreatorId && data.creatorId && String(data.creatorId) !== String(publicCreatorId)) {
         return
       }
+      lastRealtimeEventAtRef.current = Date.now()
 
       const incomingDonation = {
         id: data.id,
@@ -588,8 +626,15 @@ export default function Overlay({
         settledDonation ? undefined : { updateTotals: false, forceAlert: true },
       )
     })
+    socket.on("connect", () => {
+      socketConnectedRef.current = true
+    })
+    socket.on("disconnect", () => {
+      socketConnectedRef.current = false
+    })
 
     return () => {
+      socketConnectedRef.current = false
       socket.disconnect()
     }
   }, [isPublicOverlay, processDonation, publicCreatorId])
@@ -846,3 +891,4 @@ export default function Overlay({
     </div>
   )
 }
+

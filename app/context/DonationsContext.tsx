@@ -71,14 +71,14 @@ export const DonationsProvider = ({ children }: { children: ReactNode }) => {
           void refreshUser()
         })
         .catch(() => {
-          // silent — network/server error; current state is preserved
+          // silent - network/server error; current state is preserved
         })
     }
 
     fetchDonations()
 
     const socket = io(getSocketUrl(), {
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
       auth: {
         sessionToken: getStoredSessionToken(),
       },
@@ -123,3 +123,4 @@ export const useDonations = () => {
   if (!context) throw new Error("useDonations must be used inside provider")
   return context
 }
+
