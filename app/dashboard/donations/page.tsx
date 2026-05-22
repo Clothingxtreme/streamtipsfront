@@ -32,27 +32,26 @@ export default function DonationsPage() {
       try {
         const response = await authRequest("/donations")
         const data = await response.json()
-        const formatted = (Array.isArray(data) ? data : []).map((d: any) => ({
-          date: new Date(d.createdAt || d.date || Date.now()),
-          provider: String(d.provider || "monnify").toLowerCase(),
-          rawStatus: String(d.status || "").toLowerCase(),
-          rawWalletStatus: String(d.walletStatus || "").toLowerCase(),
-          fundsFlow: String(d.fundsFlow || "wallet").toLowerCase(),
-          settlementStatus: String(d.settlementStatus || "").toLowerCase(),
-        })).map((d: any) => {
+        const formatted = (Array.isArray(data) ? data : []).map((d: any) => {
+          const date = new Date(d.createdAt || d.date || Date.now())
+          const provider = String(d.provider || "monnify").toLowerCase()
+          const rawStatus = String(d.status || "").toLowerCase()
+          const rawWalletStatus = String(d.walletStatus || "").toLowerCase()
+          const fundsFlow = String(d.fundsFlow || "wallet").toLowerCase()
+          const settlementStatus = String(d.settlementStatus || "").toLowerCase()
           const isLegacyBeforeSplitCutover =
-            d.provider === "monnify" &&
-            d.fundsFlow === "wallet" &&
-            d.date < MONNIFY_SPLIT_CUTOVER_AT
+            provider === "monnify" &&
+            fundsFlow === "wallet" &&
+            date < MONNIFY_SPLIT_CUTOVER_AT
           const isFailed =
-            d.rawStatus === "failed" ||
-            d.rawWalletStatus === "rejected" ||
-            d.settlementStatus === "failed"
+            rawStatus === "failed" ||
+            rawWalletStatus === "rejected" ||
+            settlementStatus === "failed"
           const isPendingNewSettlementFlow =
-            d.rawStatus === "pending" ||
-            d.rawWalletStatus === "pending_review" ||
-            d.settlementStatus === "pending" ||
-            d.settlementStatus === "partial"
+            rawStatus === "pending" ||
+            rawWalletStatus === "pending_review" ||
+            settlementStatus === "pending" ||
+            settlementStatus === "partial"
 
           let normalizedStatus: "completed" | "pending" | "failed" = "completed"
           if (isFailed) {
@@ -62,15 +61,16 @@ export default function DonationsPage() {
           }
 
           return {
-          id: d.id || d._id,
-          donorName: d.senderName || d.sender || "Anonymous",
-          amount: Number(d.amount) || 0,
-          creatorShare: Number(d.creatorShare) || Math.round((Number(d.amount) || 0) * CREATOR_SHARE_RATE),
-          date: d.date,
-          status: normalizedStatus,
-          message: d.message || d.alertMessage || "",
-          provider: d.provider,
-          transactionReference: d.transactionReference || d.paystackReference || "",
+            id: d.id || d._id,
+            donorName: d.senderName || d.sender || "Anonymous",
+            amount: Number(d.amount) || 0,
+            creatorShare:
+              Number(d.creatorShare) || Math.round((Number(d.amount) || 0) * CREATOR_SHARE_RATE),
+            date,
+            status: normalizedStatus,
+            message: d.message || d.alertMessage || "",
+            provider,
+            transactionReference: d.transactionReference || d.paystackReference || "",
           }
         })
 
