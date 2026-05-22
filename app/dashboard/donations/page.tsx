@@ -16,6 +16,7 @@ import { authRequest } from "@/lib/auth-client"
 
 type StatusFilter = "all" | "completed" | "pending" | "failed"
 const CREATOR_SHARE_RATE = 0.8
+const MONNIFY_SPLIT_CUTOVER_AT = new Date("2026-05-20T14:00:00+01:00")
 
 export default function DonationsPage() {
   const [donations, setDonations] = useState<DonationRecord[]>([])
@@ -32,21 +33,46 @@ export default function DonationsPage() {
         const response = await authRequest("/donations")
         const data = await response.json()
         const formatted = (Array.isArray(data) ? data : []).map((d: any) => ({
+          date: new Date(d.createdAt || d.date || Date.now()),
+          provider: String(d.provider || "monnify").toLowerCase(),
+          rawStatus: String(d.status || "").toLowerCase(),
+          rawWalletStatus: String(d.walletStatus || "").toLowerCase(),
+          fundsFlow: String(d.fundsFlow || "wallet").toLowerCase(),
+          settlementStatus: String(d.settlementStatus || "").toLowerCase(),
+        })).map((d: any) => {
+          const isLegacyBeforeSplitCutover =
+            d.provider === "monnify" &&
+            d.fundsFlow === "wallet" &&
+            d.date < MONNIFY_SPLIT_CUTOVER_AT
+          const isFailed =
+            d.rawStatus === "failed" ||
+            d.rawWalletStatus === "rejected" ||
+            d.settlementStatus === "failed"
+          const isPendingNewSettlementFlow =
+            d.rawStatus === "pending" ||
+            d.rawWalletStatus === "pending_review" ||
+            d.settlementStatus === "pending" ||
+            d.settlementStatus === "partial"
+
+          let normalizedStatus: "completed" | "pending" | "failed" = "completed"
+          if (isFailed) {
+            normalizedStatus = "failed"
+          } else if (!isLegacyBeforeSplitCutover && isPendingNewSettlementFlow) {
+            normalizedStatus = "pending"
+          }
+
+          return {
           id: d.id || d._id,
           donorName: d.senderName || d.sender || "Anonymous",
           amount: Number(d.amount) || 0,
           creatorShare: Number(d.creatorShare) || Math.round((Number(d.amount) || 0) * CREATOR_SHARE_RATE),
-          date: new Date(d.createdAt || d.date || Date.now()),
-          status:
-            d.status === "pending" || d.walletStatus === "pending_review"
-              ? ("pending" as const)
-              : d.status === "failed" || d.walletStatus === "rejected"
-                ? ("failed" as const)
-                : ("completed" as const),
+          date: d.date,
+          status: normalizedStatus,
           message: d.message || d.alertMessage || "",
-          provider: d.provider || "",
+          provider: d.provider,
           transactionReference: d.transactionReference || d.paystackReference || "",
-        }))
+          }
+        })
 
         setDonations(formatted)
       } catch (error) {
