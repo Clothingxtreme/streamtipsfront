@@ -55,7 +55,7 @@ export function EarningsSummaryCard({
   accentColor = "purple",
   glowing = false,
 }: EarningsSummaryCardProps) {
-  const styles = accentStyles[accentColor]
+  const styles = accentStyles[accentColor] || accentStyles.purple
   
   const percentageChange = previousAmount 
     ? ((amount - previousAmount) / previousAmount) * 100 

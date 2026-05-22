@@ -549,7 +549,7 @@ export default function EarningsPage() {
           title="Settled"
           amount={confirmedSettledEarnings}
           icon={CheckCircle2}
-          accentColor="emerald"
+          accentColor="green"
         />
       </div>
 
