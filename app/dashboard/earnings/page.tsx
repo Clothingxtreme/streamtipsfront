@@ -66,6 +66,7 @@ type WithdrawResult =
 
 const MIN_WITHDRAWAL = 5000
 const CREATOR_SHARE_RATE = 0.8
+const MONNIFY_SPLIT_CUTOVER_AT = new Date("2026-05-20T14:00:00+01:00")
 
 function normalizePayoutStatus(status: unknown): Payout["status"] {
   if (
@@ -220,6 +221,7 @@ export default function EarningsPage() {
     const settlementStatus = String(donation.settlementStatus || "").toLowerCase()
     const status = String(donation.status || "").toLowerCase()
     const walletStatus = String(donation.walletStatus || "available").toLowerCase()
+    const donationDate = normalizeDate(donation.date || donation.createdAt)
     const isRejected = walletStatus === "rejected" || status === "failed" || settlementStatus === "failed"
 
     if (isRejected) {
@@ -227,6 +229,10 @@ export default function EarningsPage() {
     }
 
     if (provider === "monnify" && fundsFlow === "wallet") {
+      if (donationDate < MONNIFY_SPLIT_CUTOVER_AT) {
+        return { settled: creatorShare, pending: 0, creatorShare }
+      }
+
       const settled = Math.max(
         0,
         Number(
@@ -318,6 +324,25 @@ export default function EarningsPage() {
       { settled: 0, pending: 0 },
     )
   }, [donations])
+  const totalWithdrawn = useMemo(
+    () =>
+      payouts.reduce((sum, payout) => {
+        if (payout.status === "completed" || payout.status === "success") {
+          return sum + (Number(payout.amount) || 0)
+        }
+        return sum
+      }, 0),
+    [payouts],
+  )
+  const availableBalance = Math.max(
+    0,
+    Number(settlementTotals.settled - totalWithdrawn),
+  )
+  const pendingReviewBalance = Math.max(
+    0,
+    Number(settlementTotals.pending),
+  )
+  const confirmedSettledEarnings = Math.max(0, availableBalance + totalWithdrawn)
   const payoutProfile = user?.payoutProfile
   const hasLockedPayoutProfile = Boolean(
     payoutProfile?.locked &&
@@ -505,26 +530,6 @@ export default function EarningsPage() {
       return date.getFullYear() === lastYear ? sum + getSettledAndPending(donation).settled : sum
     }, 0)
   }, [donations])
-
-  const totalWithdrawn = useMemo(
-    () =>
-      payouts.reduce((sum, payout) => {
-        if (payout.status === "completed" || payout.status === "success") {
-          return sum + (Number(payout.amount) || 0)
-        }
-        return sum
-      }, 0),
-    [payouts],
-  )
-  const availableBalance = Math.max(
-    0,
-    Number(user?.wallet?.availableBalance || settlementTotals.settled - totalWithdrawn),
-  )
-  const pendingReviewBalance = Math.max(
-    0,
-    Number(user?.wallet?.pendingBalance || settlementTotals.pending),
-  )
-  const confirmedSettledEarnings = Math.max(0, availableBalance + totalWithdrawn)
 
   return (
     <div data-tour="earnings-main" className="p-6 lg:p-8 space-y-6">
