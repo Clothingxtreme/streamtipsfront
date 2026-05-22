@@ -322,10 +322,24 @@ export default function EarningsPage() {
     0,
     Number(settlementTotals.settled - totalWithdrawn),
   )
-  const pendingReviewBalance = Math.max(
-    0,
-    Number(settlementTotals.pending),
-  )
+  const pendingReviewBalance = useMemo(() => {
+    const now = new Date()
+    const pendingToday = donations.reduce((sum, donation) => {
+      const donationDate = normalizeDate(donation.date || donation.createdAt)
+      const isToday =
+        donationDate.getDate() === now.getDate() &&
+        donationDate.getMonth() === now.getMonth() &&
+        donationDate.getFullYear() === now.getFullYear()
+
+      if (!isToday || donationDate < MONNIFY_SPLIT_CUTOVER_AT) {
+        return sum
+      }
+
+      return sum + getSettledAndPending(donation).pending
+    }, 0)
+
+    return Math.max(0, Number(pendingToday))
+  }, [donations])
   const confirmedSettledEarnings = Math.max(0, availableBalance + totalWithdrawn)
   const donationsReceived = Math.max(0, settlementTotals.settled + settlementTotals.pending)
   const payoutProfile = user?.payoutProfile
@@ -540,7 +554,7 @@ export default function EarningsPage() {
           glowing
         />
         <EarningsSummaryCard
-          title="Pending Settled"
+          title="Pending Settled (Today)"
           amount={pendingReviewBalance}
           icon={BarChart3}
           accentColor="amber"
