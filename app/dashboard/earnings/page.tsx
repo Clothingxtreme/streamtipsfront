@@ -5,9 +5,7 @@ import { io } from "socket.io-client"
 import {
   ArrowDownToLine,
   ArrowRight,
-  ArrowUpFromLine,
   BarChart3,
-  Calendar,
   CalendarDays,
   CalendarRange,
   CheckCircle2,
@@ -297,20 +295,6 @@ export default function EarningsPage() {
     }, [])
   }, [donations])
 
-  const todayEarnings = useMemo(() => {
-    const now = new Date()
-
-    return donations.reduce((sum, donation) => {
-      const date = normalizeDate(donation.date || donation.createdAt)
-      const isToday =
-        date.getDate() === now.getDate() &&
-        date.getMonth() === now.getMonth() &&
-        date.getFullYear() === now.getFullYear()
-
-      return isToday ? sum + getSettledAndPending(donation).settled : sum
-    }, 0)
-  }, [donations])
-
   const cleanWithdrawAmount = withdrawAmount.replace(/,/g, "")
   const parsedWithdrawAmount = Number(cleanWithdrawAmount) || 0
   const settlementTotals = useMemo(() => {
@@ -343,6 +327,7 @@ export default function EarningsPage() {
     Number(settlementTotals.pending),
   )
   const confirmedSettledEarnings = Math.max(0, availableBalance + totalWithdrawn)
+  const donationsReceived = Math.max(0, settlementTotals.settled + settlementTotals.pending)
   const payoutProfile = user?.payoutProfile
   const hasLockedPayoutProfile = Boolean(
     payoutProfile?.locked &&
@@ -472,20 +457,6 @@ export default function EarningsPage() {
     }
   }
 
-  const yesterdayEarnings = useMemo(() => {
-    const now = new Date()
-    const yesterday = new Date(now)
-    yesterday.setDate(now.getDate() - 1)
-    return donations.reduce((sum, donation) => {
-      const date = normalizeDate(donation.date || donation.createdAt)
-      const isYesterday =
-        date.getDate() === yesterday.getDate() &&
-        date.getMonth() === yesterday.getMonth() &&
-        date.getFullYear() === yesterday.getFullYear()
-      return isYesterday ? sum + getSettledAndPending(donation).settled : sum
-    }, 0)
-  }, [donations])
-
   const weeklyEarnings = weeklyData.reduce((sum, item) => sum + item.amount, 0)
   const previousWeekEarnings = useMemo(() => {
     const now = new Date()
@@ -560,32 +531,25 @@ export default function EarningsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         <EarningsSummaryCard
-          title="Confirmed Settled Earnings"
-          amount={confirmedSettledEarnings}
+          title="Donations Received"
+          amount={donationsReceived}
           icon={Wallet}
           accentColor="purple"
           glowing
         />
         <EarningsSummaryCard
-          title="Pending Earnings"
+          title="Pending Settled"
           amount={pendingReviewBalance}
           icon={BarChart3}
           accentColor="amber"
         />
         <EarningsSummaryCard
-          title="Total Withdrawn"
-          amount={totalWithdrawn}
-          icon={ArrowUpFromLine}
-          accentColor="amber"
-        />
-        <EarningsSummaryCard
-          title="Today"
-          amount={todayEarnings}
-          previousAmount={yesterdayEarnings}
-          icon={Calendar}
-          accentColor="cyan"
+          title="Settled"
+          amount={confirmedSettledEarnings}
+          icon={CheckCircle2}
+          accentColor="emerald"
         />
       </div>
 

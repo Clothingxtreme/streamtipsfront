@@ -10,6 +10,7 @@ export interface DonationRecord {
   id: string
   donorName: string
   amount: number
+  creatorShare?: number
   date: Date
   status: "completed" | "pending" | "failed"
   message?: string

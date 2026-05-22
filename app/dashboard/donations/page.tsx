@@ -15,6 +15,7 @@ import { Search, Filter, TrendingUp, Wallet } from "lucide-react"
 import { authRequest } from "@/lib/auth-client"
 
 type StatusFilter = "all" | "completed" | "pending" | "failed"
+const CREATOR_SHARE_RATE = 0.8
 
 export default function DonationsPage() {
   const [donations, setDonations] = useState<DonationRecord[]>([])
@@ -34,6 +35,7 @@ export default function DonationsPage() {
           id: d.id || d._id,
           donorName: d.senderName || d.sender || "Anonymous",
           amount: Number(d.amount) || 0,
+          creatorShare: Number(d.creatorShare) || Math.round((Number(d.amount) || 0) * CREATOR_SHARE_RATE),
           date: new Date(d.createdAt || d.date || Date.now()),
           status:
             d.status === "pending" || d.walletStatus === "pending_review"
@@ -85,8 +87,12 @@ export default function DonationsPage() {
 
   const stats = useMemo(() => {
     const total = donations.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
+    const streamerIncome = donations.reduce(
+      (sum, d) => sum + (Number(d.creatorShare) || Math.round((Number(d.amount) || 0) * CREATOR_SHARE_RATE)),
+      0,
+    )
     const completed = donations.filter((d) => d.status === "completed").length
-    return { total, completed, count: donations.length }
+    return { total, streamerIncome, completed, count: donations.length }
   }, [donations])
 
   return (
@@ -96,7 +102,7 @@ export default function DonationsPage() {
         <p className="text-zinc-500">View and manage all your donation history.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
             <Wallet className="w-6 h-6 text-purple-400" />
@@ -105,6 +111,17 @@ export default function DonationsPage() {
             <p className="text-sm text-zinc-500">Total Received</p>
             <p className="text-xl font-bold text-white">
               NGN {(Number(stats.total) || 0).toLocaleString()}
+            </p>
+          </div>
+        </div>
+        <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-4 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
+            <TrendingUp className="w-6 h-6 text-cyan-400" />
+          </div>
+          <div>
+            <p className="text-sm text-zinc-500">Streamer Income (80%)</p>
+            <p className="text-xl font-bold text-white">
+              NGN {(Number(stats.streamerIncome) || 0).toLocaleString()}
             </p>
           </div>
         </div>
