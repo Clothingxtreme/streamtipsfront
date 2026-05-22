@@ -12,6 +12,7 @@ import {
 import {
   authRequest,
   AUTH_SESSION_STORAGE_KEY,
+  getStoredSessionToken,
   setStoredSessionToken,
   type AuthResponse,
 } from "@/lib/auth-client"
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshUser = useCallback(async () => {
+    const tokenSnapshot = getStoredSessionToken()
     try {
       const response = await authRequest("/auth/me")
 
@@ -65,7 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // A 503 / 500 / network hiccup during a server restart must NOT wipe
         // the token — that would permanently log the user out even though their
         // session is still valid.
-        if (response.status === 401 || response.status === 403) {
+        const latestToken = getStoredSessionToken()
+        const isSameRequestToken =
+          !tokenSnapshot || (latestToken && latestToken === tokenSnapshot)
+
+        if ((response.status === 401 || response.status === 403) && isSameRequestToken) {
           setStoredSessionToken("")
         }
         setUser(null)

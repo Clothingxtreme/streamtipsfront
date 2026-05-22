@@ -12,6 +12,7 @@ import {
 import {
   adminRequest,
   ADMIN_SESSION_STORAGE_KEY,
+  getStoredAdminToken,
   setStoredAdminToken,
 } from "@/lib/admin-client"
 import { getApiBaseUrl } from "@/lib/runtime-config"
@@ -36,11 +37,18 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshAdmin = useCallback(async () => {
+    const tokenSnapshot = getStoredAdminToken()
     try {
       const response = await adminRequest("/admin/auth/me")
 
       if (!response.ok) {
-        setStoredAdminToken("")
+        const latestToken = getStoredAdminToken()
+        const isSameRequestToken =
+          !tokenSnapshot || (latestToken && latestToken === tokenSnapshot)
+
+        if ((response.status === 401 || response.status === 403) && isSameRequestToken) {
+          setStoredAdminToken("")
+        }
         setAdmin(null)
         return null
       }
