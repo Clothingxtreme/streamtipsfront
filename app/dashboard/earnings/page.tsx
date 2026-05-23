@@ -45,6 +45,7 @@ type Donation = {
   walletStatus?: "available" | "pending_review" | "rejected"
   fundsFlow?: "wallet" | "direct_split"
   provider?: string
+  transactionReference?: string
   date?: string
   createdAt?: string
 }
@@ -104,6 +105,30 @@ function mergePayouts(existing: Payout[], incoming: Payout) {
   return [incoming, ...withoutDuplicate]
 }
 
+function getDonationKey(donation: Partial<Donation> & { _id?: string; id?: string; transactionReference?: string }) {
+  return String(donation._id || donation.id || donation.transactionReference || "")
+}
+
+function mergeDonations(existing: Donation[], incoming: Donation & { _id?: string; id?: string; transactionReference?: string }) {
+  const incomingKey = getDonationKey(incoming)
+  if (!incomingKey) {
+    return [incoming, ...existing]
+  }
+
+  const next = existing.slice()
+  const index = next.findIndex((item: any) => getDonationKey(item) === incomingKey)
+  if (index === -1) {
+    next.unshift(incoming)
+    return next
+  }
+
+  next[index] = {
+    ...next[index],
+    ...incoming,
+  }
+  return next
+}
+
 function formatCurrency(amount: number) {
   return `NGN ${amount.toLocaleString()}`
 }
@@ -128,12 +153,27 @@ export default function EarningsPage() {
       return
     }
 
-    void authRequest("/donations")
-      .then((res) => res.json())
-      .then((data) => {
-        const nextDonations = Array.isArray(data) ? data : []
-        setDonations(nextDonations)
-      })
+    let active = true
+    const fetchDonations = async () => {
+      try {
+        const res = await authRequest("/donations")
+        const data = await res.json()
+        if (!active) return
+        setDonations(Array.isArray(data) ? data : [])
+      } catch {
+        if (!active) return
+      }
+    }
+
+    void fetchDonations()
+    const interval = setInterval(() => {
+      void fetchDonations()
+    }, 30000)
+
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
   }, [isAuthenticated])
 
   useEffect(() => {
@@ -174,7 +214,15 @@ export default function EarningsPage() {
         return
       }
 
-      setDonations((prev) => [data, ...prev])
+      setDonations((prev) => mergeDonations(prev, data))
+    })
+
+    socket.on("donationSettlementUpdated", (data) => {
+      if (data.creatorId && data.creatorId !== user.id) {
+        return
+      }
+
+      setDonations((prev) => mergeDonations(prev, data))
     })
 
     socket.on("newPayout", (data) => {
@@ -589,41 +637,6 @@ export default function EarningsPage() {
           icon={CalendarRange}
           accentColor="purple"
         />
-      </div>
-
-      <div className="relative overflow-hidden rounded-2xl border border-purple-500/30 bg-[radial-gradient(circle_at_top_right,rgba(217,70,239,0.25),transparent_35%),linear-gradient(135deg,rgba(91,33,182,0.22),rgba(24,24,27,0.95))] p-6">
-        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="space-y-2">
-            <p className="text-sm uppercase tracking-[0.25em] text-purple-200/70">
-              Available Balance
-            </p>
-            <p className="text-4xl font-black text-white">
-              {formatCurrency(Number(availableBalance) || 0)}
-            </p>
-            <p className="text-sm text-zinc-300">
-              This balance is settlement-confirmed and already net of processed withdrawals.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:w-[480px]">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Minimum</p>
-              <p className="mt-1 text-base font-semibold text-white">
-                {formatCurrency(MIN_WITHDRAWAL)}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Settlement</p>
-              <p className="mt-1 text-base font-semibold text-white">Monnify auto-split</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Pending Review</p>
-              <p className="mt-1 text-base font-semibold text-amber-300">
-                {formatCurrency(pendingReviewBalance)}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
