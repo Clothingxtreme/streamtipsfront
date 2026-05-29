@@ -102,7 +102,7 @@ export const defaultOverlaySettings: ToggleItem[] = [
   {
     id: "preview",
     label: "Preview Mode",
-    description: "Show test donations on your overlay",
+    description: "Show test donations in private overlay preview only",
     icon: Eye,
     enabled: false,
   },

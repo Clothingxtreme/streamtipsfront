@@ -709,7 +709,7 @@ export default function Overlay({
   }, [currentAlert, showAlert])
 
   useEffect(() => {
-    if (!settings.preview) {
+    if (!settings.preview || isPublicOverlay) {
       previewStartedRef.current = false
       return
     }
@@ -727,7 +727,7 @@ export default function Overlay({
 
     const timer = window.setInterval(sendPreviewDonation, 12000)
     return () => window.clearInterval(timer)
-  }, [processDonation, settings.preview])
+  }, [isPublicOverlay, processDonation, settings.preview])
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-transparent text-white">

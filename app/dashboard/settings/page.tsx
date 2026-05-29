@@ -147,7 +147,7 @@ const OVERLAY_SETTINGS: Array<{
   {
     id: "preview",
     label: "Preview Mode",
-    description: "Run sample donation events in the overlay so you can test it safely.",
+    description: "Run sample donation events in private overlay preview sessions only.",
     icon: Eye,
   },
 ]
