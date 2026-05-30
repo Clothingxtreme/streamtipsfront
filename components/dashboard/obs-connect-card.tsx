@@ -1,50 +1,17 @@
 "use client"
 
-import { Copy, MonitorPlay, RadioTower, Video } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { getOverlayUrl, type OverlayUrlMode } from "@/lib/runtime-config"
-import { useAuth } from "@/app/context/AuthContext"
+import { MonitorPlay, RadioTower, Video } from "lucide-react"
 
 const steps = [
   "Open OBS and select the scene where you want StreamTip to appear.",
   "Under Sources, click the + button and choose Browser.",
-  "Create separate browser sources for live donations, donation goal, leaderboard, or account details anywhere you want independent placement.",
+  "Create separate browser sources for live donations, leaderboard, or account details anywhere you want independent placement.",
   "Paste the matching overlay URL below into each Browser Source URL field.",
   "Set each source size to match the area you want to control, then keep the background transparent.",
-  "Leave the sources active so live gifts, goals, leaderboard, and account details stay linked.",
-]
-
-const overlayLinks: Array<{
-  mode: OverlayUrlMode
-  title: string
-  description: string
-}> = [
-  {
-    mode: "gifts",
-    title: "Live donation alerts",
-    description: "Transparent until a donation alert appears. Best for your main live alert source.",
-  },
-  {
-    mode: "goal",
-    title: "Donation goal only",
-    description: "Goal bar and top supporter badge without the leaderboard panel.",
-  },
-  {
-    mode: "leaderboard",
-    title: "Leaderboard only",
-    description: "Top gifters panel without the donation goal block.",
-  },
-  {
-    mode: "account",
-    title: "Donation account only",
-    description: "Virtual account name, number, bank, and provider.",
-  },
+  "Leave the sources active so live gifts, leaderboard, and account details stay linked.",
 ]
 
 export function ObsConnectCard() {
-  const { user } = useAuth()
-
   return (
     <section className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80">
       <div className="border-b border-zinc-800 px-5 py-4">
@@ -62,39 +29,6 @@ export function ObsConnectCard() {
       </div>
 
       <div className="space-y-5 p-5">
-        <div className="grid gap-3">
-          {overlayLinks.map((link) => {
-            const overlayUrl = getOverlayUrl(user, link.mode)
-
-            return (
-              <div key={link.mode} className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium text-white">{link.title}</p>
-                  <p className="text-xs text-zinc-500">{link.description}</p>
-                </div>
-                <div className="mt-3 flex flex-col gap-3 lg:flex-row">
-                  <Input
-                    readOnly
-                    value={overlayUrl}
-                    className="border-zinc-700 bg-zinc-900 text-white"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
-                    onClick={() => {
-                      void navigator.clipboard.writeText(overlayUrl)
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                    Copy URL
-                  </Button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
         <div className="grid gap-3">
           {steps.map((step, index) => (
             <div

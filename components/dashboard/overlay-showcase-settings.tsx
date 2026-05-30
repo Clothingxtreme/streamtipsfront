@@ -22,7 +22,6 @@ interface OverlayShowcaseSettingsProps {
 
 const quickOverlayLinks: Array<{ mode: OverlayUrlMode; label: string }> = [
   { mode: "gifts", label: "Live Donation Animation" },
-  { mode: "goal", label: "Donation Goal" },
   { mode: "leaderboard", label: "Leaderboard" },
   { mode: "account", label: "Account" },
 ]
