@@ -19,16 +19,23 @@ export function getSiteBaseUrl() {
 }
 
 export function getApiBaseUrl() {
-  if (typeof window !== "undefined") {
-    const hostname = window.location?.hostname
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return LOCAL_API_URL
-    }
-  }
-
   const configuredUrl = String(process.env.NEXT_PUBLIC_API_BASE_URL || "").trim()
   if (configuredUrl) {
     return trimTrailingSlash(configuredUrl)
+  }
+
+  if (typeof window !== "undefined") {
+    const hostname = window.location?.hostname
+    const protocol = window.location?.protocol || "https:"
+
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return LOCAL_API_URL
+    }
+
+    // Safe production fallback when NEXT_PUBLIC_API_BASE_URL is missing.
+    if (hostname && /(^|\.)streamtips\.live$/i.test(hostname)) {
+      return `${protocol}//api.streamtips.live`
+    }
   }
 
   return LOCAL_API_URL

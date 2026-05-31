@@ -12,6 +12,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { adminRequest } from "@/lib/admin-client"
+import { getApiBaseUrl } from "@/lib/runtime-config"
 import { cn } from "@/lib/utils"
 
 type AdminOverviewResponse = {
@@ -127,11 +128,15 @@ export default function AdminPage() {
           logs: Array.isArray(payload.logs) ? payload.logs : [],
         })
       } catch (requestError) {
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "Could not load admin overview.",
-        )
+        if (requestError instanceof TypeError) {
+          setError(`Failed to fetch admin overview from ${getApiBaseUrl()}.`)
+        } else {
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Could not load admin overview.",
+          )
+        }
       } finally {
         setLoading(false)
       }
