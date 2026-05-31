@@ -25,14 +25,33 @@ export function setStoredAdminToken(token: string) {
 
 export async function adminRequest(path: string, init: RequestInit = {}) {
   const token = getStoredAdminToken()
+  const method = String(init.method || "GET").toUpperCase()
   const headers = new Headers(init.headers || {})
 
   if (token) {
     headers.set("x-admin-token", token)
   }
 
-  return fetch(`${getApiBaseUrl()}${path}`, {
-    ...init,
-    headers,
-  })
+  const primaryRequest = () =>
+    fetch(`${getApiBaseUrl()}${path}`, {
+      ...init,
+      headers,
+    })
+
+  try {
+    return await primaryRequest()
+  } catch (error) {
+    // Some mobile/proxy setups fail CORS preflight on custom headers.
+    // For GET-only requests, retry without custom headers using query token fallback.
+    if (method !== "GET" || !token) {
+      throw error
+    }
+
+    const separator = path.includes("?") ? "&" : "?"
+    const fallbackPath = `${path}${separator}adminToken=${encodeURIComponent(token)}`
+    return fetch(`${getApiBaseUrl()}${fallbackPath}`, {
+      ...init,
+      headers: init.headers,
+    })
+  }
 }
