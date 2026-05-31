@@ -150,7 +150,7 @@ export default function AdminPage() {
       overview
         ? [
             {
-              label: "Platform revenue",
+              label: "Platform revenue (all-time)",
               value: formatCurrency(overview.metrics.platformRevenue),
               icon: Coins,
               tone: "cyan",
@@ -256,7 +256,7 @@ export default function AdminPage() {
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <MetricTile label="Platform 20%" value={formatCurrency(overview.metrics.platformRevenue)} />
+                <MetricTile label="Platform 20% (all-time)" value={formatCurrency(overview.metrics.platformRevenue)} />
                 <MetricTile label="Creator 80%" value={formatCurrency(overview.metrics.creatorRevenue)} />
                 <MetricTile label="Paid out" value={formatCurrency(overview.metrics.totalPaidOut)} />
               </div>

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
 import {
   ArrowDownToLine,
+  ChartNoAxesColumn,
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils"
 
 const navItems = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
+  { label: "Platform Revenue", href: "/admin/platform-revenue", icon: ChartNoAxesColumn },
   { label: "Manage Users", href: "/admin/users", icon: Users },
   { label: "Platform Withdrawals", href: "/admin/platform-withdrawals", icon: ArrowDownToLine },
   { label: "Audit Logs", href: "/admin/logs", icon: ScrollText },

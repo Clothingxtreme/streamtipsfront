@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useState, type ReactNode } from "react"
 import { Check, RefreshCcw, ShieldPlus, Trash2, UserCog, UserPlus, UserRoundX, WalletCards } from "lucide-react"
 import { adminRequest } from "@/lib/admin-client"
 import {
@@ -36,6 +36,24 @@ type UsersPagination = {
   totalPages: number
   hasPrevious: boolean
   hasNext: boolean
+}
+
+type AdminUserListItem = {
+  id: string
+  name: string
+  firstName?: string
+  middleName?: string
+  lastName?: string
+  email: string
+  role?: "creator" | "admin"
+  status?: "active" | "suspended" | "banned"
+  identity?: {
+    hasBvn?: boolean
+    hasNin?: boolean
+    bvnLast4?: string
+    ninLast4?: string
+  }
+  createdAt?: string
 }
 
 type UserDraft = {
@@ -92,33 +110,6 @@ function getVerificationTypesForRequest(type: "bvn" | "nin" | "both") {
   return ["bvn", "nin"] as const
 }
 
-function maskIdentityNumber(value?: string) {
-  const digits = String(value || "").trim()
-  if (!digits) return "Not submitted"
-  if (digits.length <= 4) return digits
-  return `${"*".repeat(Math.max(0, digits.length - 4))}${digits.slice(-4)}`
-}
-
-function resolveIdentityNumber(user: AppUser, type: "bvn" | "nin") {
-  const keyUpper = type === "bvn" ? "Bvn" : "Nin"
-  const identity = (user?.identity || {}) as Record<string, unknown>
-  const root = user as unknown as Record<string, unknown>
-  const candidates = [
-    identity[type],
-    identity[`submitted${keyUpper}`],
-    root[type],
-    root[`submitted${keyUpper}`],
-    root[`submitted${type.toUpperCase()}`],
-  ]
-
-  for (const candidate of candidates) {
-    const value = String(candidate || "").trim()
-    if (value) return value
-  }
-
-  return ""
-}
-
 function buildVerificationResult(payload: any, type: "bvn" | "nin" | "both") {
   if (typeof payload?.success === "boolean") {
     const mismatches = Array.isArray(payload?.mismatches) ? payload.mismatches : []
@@ -168,10 +159,10 @@ function buildVerificationResult(payload: any, type: "bvn" | "nin" | "both") {
 }
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<AppUser[]>([])
+  const [users, setUsers] = useState<AdminUserListItem[]>([])
   const [usersPagination, setUsersPagination] = useState<UsersPagination>({
     page: 1,
-    limit: 25,
+    limit: 15,
     total: 0,
     totalPages: 1,
     hasPrevious: false,
@@ -182,24 +173,23 @@ export default function AdminUsersPage() {
   const [message, setMessage] = useState("")
   const [createDraft, setCreateDraft] = useState<UserDraft>(emptyDraft)
   const [selectedUserId, setSelectedUserId] = useState("")
+  const [selectedUser, setSelectedUser] = useState<AppUser | null>(null)
+  const [selectedUserLoading, setSelectedUserLoading] = useState(false)
+  const [selectedUserRefreshKey, setSelectedUserRefreshKey] = useState(0)
   const [editDraft, setEditDraft] = useState<UserDraft>(emptyDraft)
   const [submitting, setSubmitting] = useState(false)
   const [migrationMessage, setMigrationMessage] = useState("")
-  const [identityVisibility, setIdentityVisibility] = useState<
-    Record<string, { bvn: boolean; nin: boolean }>
-  >({})
+  const [searchQuery, setSearchQuery] = useState("")
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState("")
 
-  const selectedUser = useMemo(
-    () => users.find((user) => user.id === selectedUserId) || null,
-    [selectedUserId, users],
-  )
-
-  const loadUsers = async (targetPage = usersPagination.page) => {
+  const loadUsers = async (targetPage = usersPagination.page, targetQuery = appliedSearchQuery) => {
     setLoading(true)
     setError("")
 
     try {
-      const response = await adminRequest(`/admin/users?page=${targetPage}&limit=${usersPagination.limit}`)
+      const response = await adminRequest(
+        `/admin/users?page=${targetPage}&limit=${usersPagination.limit}&q=${encodeURIComponent(targetQuery)}`,
+      )
       const data = await response.json().catch(() => null)
 
       if (!response.ok) {
@@ -212,7 +202,7 @@ export default function AdminUsersPage() {
       const resolvedTotal = Number(nextPagination.total) || 0
       if (nextUsers.length === 0 && resolvedTotal > 0 && resolvedPage > 1) {
         setLoading(false)
-        await loadUsers(resolvedPage - 1)
+        await loadUsers(resolvedPage - 1, targetQuery)
         return
       }
 
@@ -225,8 +215,16 @@ export default function AdminUsersPage() {
         hasPrevious: Boolean(nextPagination.hasPrevious),
         hasNext: Boolean(nextPagination.hasNext),
       }))
-      if (selectedUserId && !nextUsers.some((user: AppUser) => user.id === selectedUserId)) {
-        setSelectedUserId(nextUsers[0]?.id || "")
+      const nextSelectedUserId =
+        selectedUserId && nextUsers.some((user: AdminUserListItem) => user.id === selectedUserId)
+          ? selectedUserId
+          : nextUsers[0]?.id || ""
+      setSelectedUserId(nextSelectedUserId)
+      if (nextSelectedUserId && nextSelectedUserId === selectedUserId) {
+        setSelectedUserRefreshKey((current) => current + 1)
+      }
+      if (!nextSelectedUserId) {
+        setSelectedUser(null)
       }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not load users.")
@@ -239,6 +237,49 @@ export default function AdminUsersPage() {
     void loadUsers()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!selectedUserId) {
+      setSelectedUser(null)
+      return
+    }
+
+    let cancelled = false
+
+    const loadSelectedUser = async () => {
+      setSelectedUserLoading(true)
+
+      try {
+        const response = await adminRequest(`/admin/users/${selectedUserId}`)
+        const data = await response.json().catch(() => null)
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Could not load selected user.")
+        }
+
+        if (!cancelled) {
+          setSelectedUser((data?.user as AppUser) || null)
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setSelectedUser(null)
+          setError(
+            requestError instanceof Error ? requestError.message : "Could not load selected user.",
+          )
+        }
+      } finally {
+        if (!cancelled) {
+          setSelectedUserLoading(false)
+        }
+      }
+    }
+
+    void loadSelectedUser()
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedUserId, selectedUserRefreshKey])
 
   useEffect(() => {
     if (!selectedUser) {
@@ -260,16 +301,6 @@ export default function AdminUsersPage() {
       provisionVirtualAccount: false,
     })
   }, [selectedUser])
-
-  const toggleIdentityVisibility = (userId: string, type: "bvn" | "nin") => {
-    setIdentityVisibility((current) => ({
-      ...current,
-      [userId]: {
-        bvn: type === "bvn" ? !current[userId]?.bvn : Boolean(current[userId]?.bvn),
-        nin: type === "nin" ? !current[userId]?.nin : Boolean(current[userId]?.nin),
-      },
-    }))
-  }
 
   const createUser = async () => {
     setSubmitting(true)
@@ -546,6 +577,12 @@ export default function AdminUsersPage() {
     }
   }
 
+  const applyUserSearch = () => {
+    const nextQuery = searchQuery.trim()
+    setAppliedSearchQuery(nextQuery)
+    void loadUsers(1, nextQuery)
+  }
+
   return (
     <div className="space-y-6 p-6 lg:p-8">
       <div className="space-y-1">
@@ -700,9 +737,34 @@ export default function AdminUsersPage() {
 
         <div className="space-y-6">
           <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-            <div className="flex items-center gap-3">
-              <UserCog className="h-5 w-5 text-cyan-200" />
-              <h2 className="text-xl font-bold text-white">User Directory</h2>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <UserCog className="h-5 w-5 text-cyan-200" />
+                <h2 className="text-xl font-bold text-white">User Directory</h2>
+              </div>
+              <div className="flex w-full gap-2 sm:w-auto">
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault()
+                      applyUserSearch()
+                    }
+                  }}
+                  placeholder="Search name or email"
+                  className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-600 sm:w-64"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={applyUserSearch}
+                  disabled={loading}
+                  className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
+                >
+                  Search
+                </Button>
+              </div>
             </div>
 
             <div className="mt-5 grid gap-3">
@@ -727,42 +789,12 @@ export default function AdminUsersPage() {
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-white">{user.name}</p>
                         <p className="truncate text-sm text-zinc-500">{user.email}</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              toggleIdentityVisibility(user.id, "bvn")
-                            }}
-                            disabled={!user.identity?.hasBvn && !resolveIdentityNumber(user, "bvn")}
-                            className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {identityVisibility[user.id]?.bvn ? "Hide BVN" : "View BVN"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              toggleIdentityVisibility(user.id, "nin")
-                            }}
-                            disabled={!user.identity?.hasNin && !resolveIdentityNumber(user, "nin")}
-                            className="rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-[11px] font-medium text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {identityVisibility[user.id]?.nin ? "Hide NIN" : "View NIN"}
-                          </button>
-                        </div>
                         <div className="mt-2 space-y-1 text-xs text-zinc-400">
                           <p>
-                            BVN:{" "}
-                            {identityVisibility[user.id]?.bvn
-                              ? resolveIdentityNumber(user, "bvn") || "Not submitted"
-                              : maskIdentityNumber(resolveIdentityNumber(user, "bvn"))}
+                            BVN: {user.identity?.hasBvn ? `******${user.identity.bvnLast4 || ""}` : "Not submitted"}
                           </p>
                           <p>
-                            NIN:{" "}
-                            {identityVisibility[user.id]?.nin
-                              ? resolveIdentityNumber(user, "nin") || "Not submitted"
-                              : maskIdentityNumber(resolveIdentityNumber(user, "nin"))}
+                            NIN: {user.identity?.hasNin ? `******${user.identity.ninLast4 || ""}` : "Not submitted"}
                           </p>
                         </div>
                       </div>
@@ -796,6 +828,7 @@ export default function AdminUsersPage() {
             <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-zinc-400">
                 Page {usersPagination.page} of {usersPagination.totalPages} • {usersPagination.total.toLocaleString()} total users
+                {appliedSearchQuery ? ` • Filter: "${appliedSearchQuery}"` : ""}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -826,7 +859,11 @@ export default function AdminUsersPage() {
               <h2 className="text-xl font-bold text-white">Selected User Controls</h2>
             </div>
 
-            {selectedUser ? (
+            {selectedUserLoading ? (
+              <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 px-4 py-5 text-sm text-zinc-400">
+                Loading selected user...
+              </div>
+            ) : selectedUser ? (
               <div className="mt-5 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField label="Full name">
