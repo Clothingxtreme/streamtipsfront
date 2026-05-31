@@ -19,6 +19,9 @@ export type GiftDefinition = {
   soundName?: string
 }
 
+export const DEFAULT_GIFT_SOUND_URL = "/sounds/dantex_irl-thanks-for-gifts-316823.mp3"
+export const DEFAULT_GIFT_SOUND_NAME = "Default gift sound"
+
 export const gifts: GiftDefinition[] = [
   { name: "Rose", icon: "🌹", coins: 1, naira: 15 },
   { name: "Panda", icon: "🐼", coins: 5, naira: 75 },
@@ -144,7 +147,10 @@ export function getGiftSoundForAmount(
     }
   }
 
-  return null
+  return {
+    soundUrl: DEFAULT_GIFT_SOUND_URL,
+    soundName: DEFAULT_GIFT_SOUND_NAME,
+  }
 }
 
 export function getGiftPackTheme(giftPack: GiftPackId) {

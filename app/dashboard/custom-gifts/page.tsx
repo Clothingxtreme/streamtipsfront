@@ -588,7 +588,7 @@ export default function CustomGiftsPage() {
                       <p className="mt-3 text-xs text-zinc-500">
                         {gift.soundUrl
                           ? `Selected: ${gift.soundName || "Custom sound"}`
-                          : "No custom sound selected. The overlay will use the generated gift tone."}
+                          : "No custom sound selected. The overlay will use the default gift sound."}
                       </p>
                     </div>
 
@@ -601,7 +601,7 @@ export default function CustomGiftsPage() {
                       <MiniInfoCard
                         icon={<PlayCircle className="h-4 w-4 text-sky-300" />}
                         title="Sound ready"
-                        body={gift.soundUrl ? "This gift will play your custom sound on stream." : "Add a sound to replace the generated overlay tone."}
+                        body={gift.soundUrl ? "This gift will play your custom sound on stream." : "Add a sound to replace the default gift sound."}
                       />
                       <MiniInfoCard
                         icon={<Check className="h-4 w-4 text-emerald-300" />}
