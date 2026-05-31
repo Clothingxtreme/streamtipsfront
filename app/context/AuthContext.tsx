@@ -58,6 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshUser = useCallback(async () => {
+    if (typeof window !== "undefined" && window.location?.pathname?.startsWith("/admin")) {
+      setUser(null)
+      return null
+    }
+
     const tokenSnapshot = getStoredSessionToken()
     try {
       const response = await authRequest("/auth/me")

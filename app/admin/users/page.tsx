@@ -29,6 +29,14 @@ import { cn } from "@/lib/utils"
 
 type UserRole = "creator" | "admin"
 type UserStatus = "active" | "suspended" | "banned"
+type UsersPagination = {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasPrevious: boolean
+  hasNext: boolean
+}
 
 type UserDraft = {
   name: string
@@ -161,6 +169,14 @@ function buildVerificationResult(payload: any, type: "bvn" | "nin" | "both") {
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AppUser[]>([])
+  const [usersPagination, setUsersPagination] = useState<UsersPagination>({
+    page: 1,
+    limit: 25,
+    total: 0,
+    totalPages: 1,
+    hasPrevious: false,
+    hasNext: false,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [message, setMessage] = useState("")
@@ -178,19 +194,40 @@ export default function AdminUsersPage() {
     [selectedUserId, users],
   )
 
-  const loadUsers = async () => {
+  const loadUsers = async (targetPage = usersPagination.page) => {
     setLoading(true)
     setError("")
 
     try {
-      const response = await adminRequest("/admin/users")
+      const response = await adminRequest(`/admin/users?page=${targetPage}&limit=${usersPagination.limit}`)
       const data = await response.json().catch(() => null)
 
       if (!response.ok) {
         throw new Error(data?.error || "Could not load users.")
       }
 
-      setUsers(data?.users || [])
+      const nextUsers = Array.isArray(data?.users) ? data.users : []
+      const nextPagination = data?.pagination || {}
+      const resolvedPage = Number(nextPagination.page) || targetPage || usersPagination.page
+      const resolvedTotal = Number(nextPagination.total) || 0
+      if (nextUsers.length === 0 && resolvedTotal > 0 && resolvedPage > 1) {
+        setLoading(false)
+        await loadUsers(resolvedPage - 1)
+        return
+      }
+
+      setUsers(nextUsers)
+      setUsersPagination((current) => ({
+        page: resolvedPage || current.page,
+        limit: Number(nextPagination.limit) || current.limit,
+        total: resolvedTotal,
+        totalPages: Math.max(1, Number(nextPagination.totalPages) || 1),
+        hasPrevious: Boolean(nextPagination.hasPrevious),
+        hasNext: Boolean(nextPagination.hasNext),
+      }))
+      if (selectedUserId && !nextUsers.some((user: AppUser) => user.id === selectedUserId)) {
+        setSelectedUserId(nextUsers[0]?.id || "")
+      }
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not load users.")
     } finally {
@@ -200,6 +237,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     void loadUsers()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -252,7 +290,7 @@ export default function AdminUsersPage() {
 
       setCreateDraft(emptyDraft)
       setMessage("User created successfully.")
-      await loadUsers()
+      await loadUsers(1)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not create user.")
     } finally {
@@ -291,7 +329,7 @@ export default function AdminUsersPage() {
       }
 
       setMessage("User updated successfully.")
-      await loadUsers()
+      await loadUsers(usersPagination.page)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not update user.")
     } finally {
@@ -317,7 +355,7 @@ export default function AdminUsersPage() {
       }
 
       setMessage(`User status changed to ${status}.`)
-      await loadUsers()
+      await loadUsers(usersPagination.page)
     } catch (requestError) {
       setError(
         requestError instanceof Error ? requestError.message : "Could not update user status.",
@@ -343,7 +381,7 @@ export default function AdminUsersPage() {
       }
 
       setMessage("Virtual account provisioned successfully.")
-      await loadUsers()
+      await loadUsers(usersPagination.page)
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -372,7 +410,7 @@ export default function AdminUsersPage() {
         throw new Error(data?.error || "Could not verify identity with Monnify.")
       }
 
-      await loadUsers()
+      await loadUsers(usersPagination.page)
       const result = buildVerificationResult(data, type)
       if (result.ok) {
         setMessage(result.message)
@@ -415,7 +453,7 @@ export default function AdminUsersPage() {
         setMessage("Virtual account removed from StreamTip.")
       }
 
-      await loadUsers()
+      await loadUsers(usersPagination.page)
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -446,7 +484,7 @@ export default function AdminUsersPage() {
       if (selectedUserId === userId) {
         setSelectedUserId("")
       }
-      await loadUsers()
+      await loadUsers(usersPagination.page)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not delete user.")
     } finally {
@@ -500,7 +538,7 @@ export default function AdminUsersPage() {
       const migrated = (data?.results || []).filter((item: any) => item.status === "migrated").length
       const failed = (data?.results || []).filter((item: any) => item.status === "failed").length
       setMigrationMessage(`Paystack migration ran for ${data?.count || 0} creator(s): ${migrated} migrated, ${failed} failed.`)
-      await loadUsers()
+      await loadUsers(usersPagination.page)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not run Paystack migration.")
     } finally {
@@ -672,7 +710,7 @@ export default function AdminUsersPage() {
                 <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-5 text-sm text-zinc-400">
                   Loading users...
                 </div>
-              ) : (
+              ) : users.length > 0 ? (
                 users.map((user) => (
                   <button
                     key={user.id}
@@ -749,7 +787,36 @@ export default function AdminUsersPage() {
                     </div>
                   </button>
                 ))
+              ) : (
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-5 text-sm text-zinc-400">
+                  No users found on this page.
+                </div>
               )}
+            </div>
+            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-zinc-400">
+                Page {usersPagination.page} of {usersPagination.totalPages} • {usersPagination.total.toLocaleString()} total users
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading || !usersPagination.hasPrevious}
+                  onClick={() => void loadUsers(usersPagination.page - 1)}
+                  className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={loading || !usersPagination.hasNext}
+                  onClick={() => void loadUsers(usersPagination.page + 1)}
+                  className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </div>
 
