@@ -97,6 +97,10 @@ export const DonationsProvider = ({ children }: { children: ReactNode }) => {
     })
 
     socket.on("newDonation", (data) => {
+      if (data?.manual) {
+        return
+      }
+
       const fixed = normalizeDonation(data)
 
       if (fixed.creatorId && fixed.creatorId !== userId) {

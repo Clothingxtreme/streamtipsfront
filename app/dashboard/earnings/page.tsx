@@ -210,6 +210,10 @@ export default function EarningsPage() {
     })
 
     socket.on("newDonation", (data) => {
+      if (data?.manual) {
+        return
+      }
+
       if (data.creatorId && data.creatorId !== user.id) {
         return
       }
