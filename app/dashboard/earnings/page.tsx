@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { EarningsSummaryCard } from "@/components/dashboard/earnings-summary-card"
 import { EarningsChart } from "@/components/dashboard/earnings-chart"
-import { PayoutsTable, type Payout } from "@/components/dashboard/payouts-table"
+import type { Payout } from "@/components/dashboard/payouts-table"
 import { useAuth } from "@/app/context/AuthContext"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -643,8 +643,6 @@ export default function EarningsPage() {
         {weeklyData.length > 0 && <EarningsChart data={weeklyData} title="Weekly Earnings" />}
         <EarningsChart data={monthlyData} title="Monthly Breakdown" />
       </div>
-
-      <PayoutsTable payouts={payouts} />
 
       <Dialog
         open={showManualWithdrawal && showWithdraw}

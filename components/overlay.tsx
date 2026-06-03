@@ -33,10 +33,12 @@ type IncomingDonation = {
   _id?: string
   sender?: string
   senderName?: string
+  displayName?: string
   senderNameSource?: string
   amount: unknown
   walletStatus?: string
   status?: string
+  transactionReference?: string
   date?: string
   createdAt?: string | Date
 }
@@ -191,6 +193,12 @@ function getDonationIdentity(value: IncomingDonation) {
 
   if (donationId) {
     return donationId
+  }
+
+  const transactionReference = String(value.transactionReference || "").trim()
+
+  if (transactionReference) {
+    return transactionReference
   }
 
   return [
@@ -615,6 +623,7 @@ export default function Overlay({
         amount: data.amount,
         walletStatus: data.walletStatus,
         status: data.status,
+        transactionReference: data.transactionReference,
         date: data.date,
         createdAt: data.createdAt,
       }
@@ -625,6 +634,32 @@ export default function Overlay({
         incomingDonation,
         settledDonation ? undefined : { updateTotals: false, forceAlert: true },
       )
+    })
+    socket.on("overlayAlert", (data) => {
+      if (publicCreatorId && data.streamerId && String(data.streamerId) !== String(publicCreatorId)) {
+        return
+      }
+
+      const incomingDonation = {
+        id: data.id,
+        _id: data._id,
+        senderName: data.senderName || data.displayName || data.sender,
+        amount: data.amount,
+        walletStatus: data.walletStatus || data.status || "available",
+        status: data.status || "available",
+        transactionReference: data.transactionReference,
+        date: data.date,
+        createdAt: data.createdAt,
+      }
+      const donationIdentity = getDonationIdentity(incomingDonation)
+
+      if (shownDonationIdsRef.current.has(donationIdentity)) {
+        return
+      }
+
+      shownDonationIdsRef.current.add(donationIdentity)
+      lastRealtimeEventAtRef.current = Date.now()
+      processDonation(incomingDonation, { updateTotals: false, forceAlert: true })
     })
     socket.on("connect", () => {
       socketConnectedRef.current = true

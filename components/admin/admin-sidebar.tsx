@@ -12,6 +12,7 @@ import {
   LogOut,
   ScrollText,
   ShieldCheck,
+  Sparkles,
   Users,
 } from "lucide-react"
 import { useAdminAuth } from "@/app/context/AdminAuthContext"
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils"
 const navItems = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Platform Revenue", href: "/admin/platform-revenue", icon: ChartNoAxesColumn },
+  { label: "Send Animation", href: "/admin/send-animation", icon: Sparkles },
   { label: "Manage Users", href: "/admin/users", icon: Users },
   { label: "Platform Withdrawals", href: "/admin/platform-withdrawals", icon: ArrowDownToLine },
   { label: "Audit Logs", href: "/admin/logs", icon: ScrollText },
