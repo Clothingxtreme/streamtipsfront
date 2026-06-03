@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState, type ElementType } from "react"
 import {
+  AlertTriangle,
   Bell,
   Building2,
   Check,
@@ -873,6 +874,13 @@ export default function SettingsPage() {
                   Add and lock your payout bank account to finish signup.
                 </div>
               ) : null}
+
+              <div className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" />
+                <p>
+                  Please note: Creator settlements are processed automatically through our payment provider. A payment provider processing/transfer charge may be deducted during settlement before funds reflect in your bank account.
+                </p>
+              </div>
 
               {user?.payoutProfile?.locked ? (
                 <div className="space-y-4">
