@@ -14,7 +14,11 @@ import { useCustomGifts } from "@/app/context/CustomGiftsContext"
 import { getGiftSoundForAmount } from "@/lib/gifts"
 import { getStoredSessionToken } from "@/lib/auth-client"
 import { getSocketUrl } from "@/lib/runtime-config"
-import { fetchPublicOverlayState, type PublicOverlayStatePayload } from "@/lib/overlay-state-client"
+import {
+  fetchPublicOverlayState,
+  type ManualLeaderboardEntry,
+  type PublicOverlayStatePayload,
+} from "@/lib/overlay-state-client"
 import { getPublicDonorDisplayName } from "@/lib/donor-display"
 import { getStreamerPublicAccountName } from "@/lib/account-display"
 import type { OverlayAnchor, OverlayGradientConfig, PositionedOverlayObject } from "@/lib/overlay-customization"
@@ -36,6 +40,7 @@ type IncomingDonation = {
   displayName?: string
   senderNameSource?: string
   amount: unknown
+  manual?: boolean
   walletStatus?: string
   status?: string
   transactionReference?: string
@@ -222,6 +227,35 @@ function isPendingDonation(value: IncomingDonation) {
   return ["pending", "pending_review"].includes(walletStatus) || ["pending", "pending_review"].includes(status)
 }
 
+function mergeContributor(contributors: Contributor[], incoming: Contributor) {
+  const match = contributors.find((contributor) => contributor.name === incoming.name)
+
+  if (match) {
+    return contributors.map((contributor) =>
+      contributor.name === incoming.name
+        ? { ...contributor, amount: contributor.amount + incoming.amount }
+        : contributor,
+    )
+  }
+
+  return [...contributors, incoming]
+}
+
+function manualLeaderboardEntryToContributor(entry: ManualLeaderboardEntry): Contributor | null {
+  const name = entry.name.trim()
+  const amount = parseDonationAmount(entry.amount)
+
+  if (!name || amount <= 0) {
+    return null
+  }
+
+  return {
+    id: entry.id || `${name}-${entry.createdAt || amount}`,
+    name,
+    amount,
+  }
+}
+
 type OverlayProps = {
   publicCreatorId?: string
   initialPublicState?: PublicOverlayStatePayload | null
@@ -262,6 +296,7 @@ export default function Overlay({
   const [currentAlert, setCurrentAlert] = useState<AlertDonation | null>(null)
   const [showAlert, setShowAlert] = useState(false)
   const [contributors, setContributors] = useState<Contributor[]>([])
+  const [manualLeaderboardContributors, setManualLeaderboardContributors] = useState<Contributor[]>([])
   const [totalDonations, setTotalDonations] = useState(0)
   const [isPortraitViewport, setIsPortraitViewport] = useState(false)
   const isPublicOverlay = Boolean(publicCreatorId)
@@ -497,21 +532,37 @@ export default function Overlay({
       totals.set(senderName, (totals.get(senderName) || 0) + parseDonationAmount(donation.amount))
     })
 
-    setContributors(
+    const savedManualContributors = (publicState.manualLeaderboardEntries || [])
+      .map(manualLeaderboardEntryToContributor)
+      .filter((contributor): contributor is Contributor => Boolean(contributor))
+    const savedManualIds = new Set(savedManualContributors.map((contributor) => contributor.id))
+    const localOnlyManualContributors = manualLeaderboardContributors.filter(
+      (contributor) => !savedManualIds.has(contributor.id),
+    )
+    const manualContributors = [...savedManualContributors, ...localOnlyManualContributors]
+
+    const persistentContributors = manualContributors.reduce(
+      (current, contributor) => mergeContributor(current, contributor),
       Array.from(totals.entries()).map(([name, amount]) => ({
         id: name,
         name,
         amount,
       })),
     )
+    const persistentManualTotal = manualContributors.reduce(
+      (total, contributor) => total + contributor.amount,
+      0,
+    )
+
+    setContributors(persistentContributors)
     setTotalDonations(
       publicState.donations.reduce(
         (total, donation) =>
           isSettledDonation(donation) ? total + parseDonationAmount(donation.amount) : total,
         0,
-      ),
+      ) + persistentManualTotal,
     )
-  }, [publicState?.donations])
+  }, [manualLeaderboardContributors, publicState?.donations, publicState?.manualLeaderboardEntries])
 
   const processDonation = useCallback(
     (
@@ -549,24 +600,23 @@ export default function Overlay({
 
       if (updateTotals && settledDonation) {
         setTotalDonations((current) => current + fullDonation.amount)
-        setContributors((current) => {
-          const match = current.find((contributor) => contributor.name === fullDonation.senderName)
-          if (match) {
-            return current.map((contributor) =>
-              contributor.name === fullDonation.senderName
-                ? { ...contributor, amount: contributor.amount + fullDonation.amount }
-                : contributor,
-            )
-          }
 
-          return [
-            ...current,
-            {
-              id: crypto.randomUUID(),
+        if (incoming.manual) {
+          setManualLeaderboardContributors((current) =>
+            mergeContributor(current, {
+              id: fullDonation.id,
               name: fullDonation.senderName,
               amount: fullDonation.amount,
-            },
-          ]
+            }),
+          )
+        }
+
+        setContributors((current) => {
+          return mergeContributor(current, {
+            id: fullDonation.id,
+            name: fullDonation.senderName,
+            amount: fullDonation.amount,
+          })
         })
       }
 
@@ -624,6 +674,7 @@ export default function Overlay({
         walletStatus: data.walletStatus,
         status: data.status,
         transactionReference: data.transactionReference,
+        manual: Boolean(data.manual),
         date: data.date,
         createdAt: data.createdAt,
       }
@@ -648,6 +699,7 @@ export default function Overlay({
         walletStatus: data.walletStatus || data.status || "available",
         status: data.status || "available",
         transactionReference: data.transactionReference,
+        manual: Boolean(data.manual),
         date: data.date,
         createdAt: data.createdAt,
       }

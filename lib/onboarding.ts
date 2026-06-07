@@ -15,9 +15,5 @@ export function needsPayoutSetup(user?: AppUser | null) {
 }
 
 export function getPostAuthRedirect(user?: AppUser | null) {
-  if (needsIdentitySetup(user)) {
-    return "/register?continue=identity"
-  }
-
   return needsPayoutSetup(user) ? "/dashboard/settings?complete=payout" : "/dashboard"
 }

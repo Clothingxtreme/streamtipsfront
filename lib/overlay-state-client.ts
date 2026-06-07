@@ -13,10 +13,19 @@ import {
 import { defaultCustomGifts, sanitizeCustomGifts, type CustomGiftDefinition } from "@/lib/custom-gifts"
 import type { AppUser } from "@/lib/user"
 
+export type ManualLeaderboardEntry = {
+  id: string
+  name: string
+  amount: number
+  message?: string
+  createdAt?: string
+}
+
 export type OverlayStatePayload = {
   settings: OverlaySettings
   customization: OverlayCustomization
   customGifts: CustomGiftDefinition[]
+  manualLeaderboardEntries: ManualLeaderboardEntry[]
   leaderboardResetAt: string
 }
 
@@ -40,7 +49,37 @@ export const defaultOverlayStatePayload: OverlayStatePayload = {
   settings: defaultOverlaySettingsMap,
   customization: defaultOverlayCustomization,
   customGifts: defaultCustomGifts,
+  manualLeaderboardEntries: [],
   leaderboardResetAt: "",
+}
+
+function sanitizeManualLeaderboardEntries(value: unknown): ManualLeaderboardEntry[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .map((entry) => {
+      const candidate = entry && typeof entry === "object" ? (entry as Record<string, unknown>) : {}
+      const id = typeof candidate.id === "string" ? candidate.id.trim() : ""
+      const name = typeof candidate.name === "string" ? candidate.name.trim() : ""
+      const amount = Number(candidate.amount)
+      const message = typeof candidate.message === "string" ? candidate.message : ""
+      const createdAt = typeof candidate.createdAt === "string" ? candidate.createdAt : ""
+
+      if (!name || !Number.isFinite(amount) || amount <= 0) {
+        return null
+      }
+
+      return {
+        id: id || `${name}-${createdAt || amount}`,
+        name,
+        amount,
+        message,
+        createdAt,
+      }
+    })
+    .filter((entry): entry is ManualLeaderboardEntry => Boolean(entry))
 }
 
 export function sanitizeOverlayStatePayload(value: unknown): OverlayStatePayload {
@@ -50,6 +89,7 @@ export function sanitizeOverlayStatePayload(value: unknown): OverlayStatePayload
     settings: sanitizeOverlaySettings(candidate.settings),
     customization: sanitizeOverlayCustomization(candidate.customization),
     customGifts: sanitizeCustomGifts(candidate.customGifts),
+    manualLeaderboardEntries: sanitizeManualLeaderboardEntries(candidate.manualLeaderboardEntries),
     leaderboardResetAt:
       typeof candidate.leaderboardResetAt === "string" ? candidate.leaderboardResetAt : "",
   }
