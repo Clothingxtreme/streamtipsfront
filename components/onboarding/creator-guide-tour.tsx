@@ -16,6 +16,7 @@ type CreatorGuideTourProps = {
   children: ReactNode
   mobileOpen: boolean
   onMobileOpenChange: (open: boolean) => void
+  blocked?: boolean
 }
 
 type GuidedStep = CreatorOnboardingStepDefinition & {
@@ -235,7 +236,12 @@ function getPopoverStyle(rect: RectBox | null, position: GuidedStep["position"])
   }
 }
 
-export function CreatorGuideTour({ children, mobileOpen, onMobileOpenChange }: CreatorGuideTourProps) {
+export function CreatorGuideTour({
+  children,
+  mobileOpen,
+  onMobileOpenChange,
+  blocked = false,
+}: CreatorGuideTourProps) {
   const router = useRouter()
   const { user, setUser } = useAuth()
   const pathname = usePathname()
@@ -267,8 +273,25 @@ export function CreatorGuideTour({ children, mobileOpen, onMobileOpenChange }: C
   }, [user?.id])
 
   useEffect(() => {
+    if (!blocked || !isOpen) {
+      return
+    }
+
+    setIsOpen(false)
+    stopTourVoice()
+
+    if (shouldAutoStartTour(user)) {
+      autoStartedRef.current = false
+    }
+  }, [blocked, isOpen, shouldAutoStartTour, user])
+
+  useEffect(() => {
     if (!pathname.startsWith("/dashboard")) {
       setIsOpen(false)
+      return
+    }
+
+    if (blocked) {
       return
     }
 
@@ -291,10 +314,14 @@ export function CreatorGuideTour({ children, mobileOpen, onMobileOpenChange }: C
     }
 
     setIsOpen(true)
-  }, [onMobileOpenChange, pathname, shouldAutoStartTour, user])
+  }, [blocked, onMobileOpenChange, pathname, shouldAutoStartTour, user])
 
   useEffect(() => {
     const handleRestart = () => {
+      if (blocked) {
+        return
+      }
+
       setCurrentStep(0)
 
       if (isMobileViewport()) {
@@ -308,7 +335,7 @@ export function CreatorGuideTour({ children, mobileOpen, onMobileOpenChange }: C
 
     window.addEventListener(STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT, handleRestart)
     return () => window.removeEventListener(STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT, handleRestart)
-  }, [onMobileOpenChange])
+  }, [blocked, onMobileOpenChange])
 
   useEffect(() => {
     if (!isOpen || !isMobileViewport()) {

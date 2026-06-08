@@ -33,6 +33,7 @@ export default function DashboardLayout({
   const { isAuthenticated, isLoading } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [platformUpdate, setPlatformUpdate] = useState<AccountNotification | null>(null)
+  const [checkingPlatformUpdate, setCheckingPlatformUpdate] = useState(true)
   const [closingPlatformUpdate, setClosingPlatformUpdate] = useState(false)
 
   useEffect(() => {
@@ -44,12 +45,14 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!isAuthenticated) {
       setPlatformUpdate(null)
+      setCheckingPlatformUpdate(false)
       return
     }
 
     let active = true
 
     const loadPlatformUpdate = async () => {
+      setCheckingPlatformUpdate(true)
       try {
         const response = await authRequest("/notifications")
         const payload = await response.json().catch(() => null)
@@ -67,6 +70,10 @@ export default function DashboardLayout({
       } catch {
         if (active) {
           setPlatformUpdate(null)
+        }
+      } finally {
+        if (active) {
+          setCheckingPlatformUpdate(false)
         }
       }
     }
@@ -109,7 +116,11 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-zinc-950 overflow-x-hidden">
-      <SafeCreatorGuideTour mobileOpen={mobileMenuOpen} onMobileOpenChange={setMobileMenuOpen}>
+      <SafeCreatorGuideTour
+        mobileOpen={mobileMenuOpen}
+        onMobileOpenChange={setMobileMenuOpen}
+        blocked={checkingPlatformUpdate || Boolean(platformUpdate)}
+      >
         <DashboardSidebar mobileOpen={mobileMenuOpen} onMobileOpenChange={setMobileMenuOpen} />
         <main className="flex-1 overflow-y-auto dashboard-scrollbar pt-14 md:pt-0">
           {children}

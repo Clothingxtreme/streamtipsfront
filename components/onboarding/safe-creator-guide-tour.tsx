@@ -7,6 +7,7 @@ type CreatorGuideTourProps = {
   children: ReactNode
   mobileOpen: boolean
   onMobileOpenChange: (open: boolean) => void
+  blocked?: boolean
 }
 
 type LoadedTourComponent = (props: CreatorGuideTourProps) => ReactNode
@@ -47,6 +48,7 @@ export function SafeCreatorGuideTour({
   children,
   mobileOpen,
   onMobileOpenChange,
+  blocked = false,
 }: CreatorGuideTourProps) {
   const [TourComponent, setTourComponent] = useState<LoadedTourComponent | null>(null)
   const [tourDisabled, setTourDisabled] = useState(false)
@@ -86,7 +88,11 @@ export function SafeCreatorGuideTour({
 
   return (
     <TourErrorBoundary fallback={children}>
-      <TourComponent mobileOpen={mobileOpen} onMobileOpenChange={onMobileOpenChange}>
+      <TourComponent
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={onMobileOpenChange}
+        blocked={blocked}
+      >
         {children}
       </TourComponent>
     </TourErrorBoundary>
