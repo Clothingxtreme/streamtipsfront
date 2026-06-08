@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Bell,
   Building2,
+  CalendarDays,
   Check,
   CreditCard,
   Eye,
@@ -53,6 +54,7 @@ type ProfileForm = {
   lastName: string
   email: string
   phoneNumber: string
+  dateOfBirth: string
   profileImage: string
 }
 
@@ -200,6 +202,7 @@ export default function SettingsPage() {
     lastName: "",
     email: "",
     phoneNumber: "",
+    dateOfBirth: "",
     profileImage: "",
   })
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
@@ -256,6 +259,7 @@ export default function SettingsPage() {
       lastName: nameParts.lastName,
       email: user?.email || "",
       phoneNumber: user?.phoneNumber || "",
+      dateOfBirth: user?.identity?.dateOfBirth?.slice(0, 10) || "",
       profileImage: user?.profileImage || "",
     })
     setIsLoadingUser(false)
@@ -412,6 +416,12 @@ export default function SettingsPage() {
       return
     }
 
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(profile.dateOfBirth.trim())) {
+      setSaveState("error")
+      setProfileMessage("Date of birth is required in YYYY-MM-DD format for BVN/NIN verification.")
+      return
+    }
+
     if (kycForm.bvn && !/^\d{11}$/.test(kycForm.bvn)) {
       setSaveState("error")
       setProfileMessage("BVN must be 11 digits.")
@@ -439,6 +449,7 @@ export default function SettingsPage() {
           lastName: profile.lastName.trim(),
           email: profile.email.trim(),
           phoneNumber: profile.phoneNumber.trim(),
+          dateOfBirth: profile.dateOfBirth.trim(),
           profileImage: profile.profileImage,
           ...(kycForm.bvn ? { bvn: kycForm.bvn } : {}),
           ...(kycForm.nin ? { nin: kycForm.nin } : {}),
@@ -460,6 +471,7 @@ export default function SettingsPage() {
         lastName: nextNameParts.lastName,
         email: nextUser.email,
         phoneNumber: nextUser.phoneNumber || "",
+        dateOfBirth: nextUser.identity?.dateOfBirth?.slice(0, 10) || "",
         profileImage: nextUser.profileImage || "",
       })
       setKycForm({ bvn: "", nin: "" })
@@ -786,6 +798,22 @@ export default function SettingsPage() {
                 placeholder="+2348012345678"
                 className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+                <CalendarDays className="h-4 w-4 text-zinc-500" />
+                Date of Birth
+              </label>
+              <Input
+                type="date"
+                value={profile.dateOfBirth}
+                onChange={(event) => handleProfileChange("dateOfBirth", event.target.value)}
+                className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
+              />
+              <p className="text-xs leading-5 text-zinc-500">
+                This must match the date of birth on the submitted BVN/NIN record.
+              </p>
             </div>
 
             <div
