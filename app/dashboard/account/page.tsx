@@ -26,6 +26,27 @@ const fallbackAccount = {
   accountReference: "Pending registration",
 }
 
+function getProvisioningErrorMessage(
+  payload: Record<string, unknown> | null,
+  status: number,
+  providerLabel: string,
+) {
+  const backendMessage = String(payload?.error || payload?.message || "").trim()
+  if (backendMessage && !/^request failed with status code/i.test(backendMessage)) {
+    return backendMessage
+  }
+
+  if (status === 400 || status === 422) {
+    return `${providerLabel} could not create the virtual account because some creator details were rejected. Please confirm your BVN/NIN verification, legal name, phone number, and payout setup, then try again.`
+  }
+
+  if (status >= 500) {
+    return `${providerLabel} virtual account provisioning is temporarily unavailable. Please try again shortly or contact support if it continues.`
+  }
+
+  return `Could not provision your ${providerLabel} virtual account. Please try again or contact support.`
+}
+
 export default function VirtualAccountPage() {
   const router = useRouter()
   const [copiedField, setCopiedField] = useState<string | null>(null)
@@ -75,7 +96,7 @@ export default function VirtualAccountPage() {
         if (String(payload?.code || "") === "BVN_VERIFICATION_REQUIRED") {
           setShowVerifyBvnPrompt(true)
         }
-        throw new Error(payload.error || `Could not provision your ${providerLabel} virtual account.`)
+        throw new Error(getProvisioningErrorMessage(payload, response.status, providerLabel))
       }
 
       await refreshUser()
