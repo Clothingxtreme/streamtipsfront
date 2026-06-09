@@ -119,21 +119,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (input: RegisterInput) => {
-      const response = await fetch(`${getApiBaseUrl()}/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(input),
-      })
+      const controller = new AbortController()
+      const timeout = window.setTimeout(() => controller.abort(), 30_000)
 
-      const data = await response.json().catch(() => null)
+      try {
+        const response = await fetch(`${getApiBaseUrl()}/auth/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(input),
+          signal: controller.signal,
+        })
 
-      if (!response.ok) {
-        throw new Error(data?.error || "Registration failed.")
+        const data = await response.json().catch(() => null)
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Registration failed.")
+        }
+
+        return handleAuthSuccess(data as AuthResponse)
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          throw new Error("The server took too long to respond. Please try again.")
+        }
+
+        if (error instanceof TypeError) {
+          throw new Error("The server could not be reached. Please check your connection and try again.")
+        }
+
+        throw error
+      } finally {
+        window.clearTimeout(timeout)
       }
-
-      return handleAuthSuccess(data as AuthResponse)
     },
     [handleAuthSuccess],
   )
