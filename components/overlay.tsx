@@ -299,6 +299,7 @@ export default function Overlay({
   const previewStartedRef = useRef(false)
   const audioContextRef = useRef<AudioContext | null>(null)
   const shownDonationIdsRef = useRef<Set<string>>(new Set())
+  const countedDonationIdsRef = useRef<Set<string>>(new Set())
   const overlayMountedAtRef = useRef(Date.now())
   const socketConnectedRef = useRef(false)
   const lastRealtimeEventAtRef = useRef(0)
@@ -614,7 +615,8 @@ export default function Overlay({
         void playGiftSound(fullDonation.amount)
       }
 
-      if (updateTotals && settledDonation) {
+      if (updateTotals && settledDonation && !countedDonationIdsRef.current.has(fullDonation.id)) {
+        countedDonationIdsRef.current.add(fullDonation.id)
         setTotalDonations((current) => current + fullDonation.amount)
 
         if (incoming.manual) {
@@ -733,7 +735,10 @@ export default function Overlay({
 
       shownDonationIdsRef.current.add(donationIdentity)
       lastRealtimeEventAtRef.current = Date.now()
-      processDonation(incomingDonation, { updateTotals: false, forceAlert: true })
+      processDonation(
+        incomingDonation,
+        isSettledDonation(incomingDonation) ? { forceAlert: true } : { updateTotals: false, forceAlert: true },
+      )
     })
     socket.on("connect", () => {
       socketConnectedRef.current = true
@@ -776,7 +781,7 @@ export default function Overlay({
 
     newDonations.forEach((donation) => {
       shownDonationIdsRef.current.add(getDonationIdentity(donation))
-      processDonation(donation, { updateTotals: false, forceAlert: true })
+      processDonation(donation, { forceAlert: true })
     })
   }, [isPublicOverlay, processDonation, publicState?.donations])
 
