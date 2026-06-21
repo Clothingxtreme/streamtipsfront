@@ -38,6 +38,8 @@ type Donation = {
   senderName?: string
   amount: number
   creatorShare?: number
+  creatorSettlementVat?: number
+  creatorSettlementNetAmount?: number
   creatorSettledAmount?: number
   settlementPendingAmount?: number
   settlementStatus?: "pending" | "partial" | "settled" | "failed" | "unknown"
@@ -65,6 +67,7 @@ type WithdrawResult =
 
 const MIN_WITHDRAWAL = 5000
 const CREATOR_SHARE_RATE = 0.8
+const MONNIFY_CREATOR_SETTLEMENT_VAT_RATE = 0.0202
 const MONNIFY_SPLIT_CUTOVER_AT = new Date("2026-05-20T14:00:00+01:00")
 
 function normalizePayoutStatus(status: unknown): Payout["status"] {
@@ -264,10 +267,30 @@ export default function EarningsPage() {
   const getCreatorShareAmount = (donation: Donation) =>
     Number(donation.creatorShare) || Math.round((Number(donation.amount) || 0) * CREATOR_SHARE_RATE)
 
-  const getSettledAndPending = (donation: Donation) => {
+  const getMonnifyCreatorSettlement = (donation: Donation) => {
     const creatorShare = getCreatorShareAmount(donation)
+    const creatorSettlementVat =
+      typeof donation.creatorSettlementVat === "number"
+        ? donation.creatorSettlementVat
+        : Math.round(creatorShare * MONNIFY_CREATOR_SETTLEMENT_VAT_RATE)
+    const creatorSettlementNetAmount =
+      typeof donation.creatorSettlementNetAmount === "number" && donation.creatorSettlementNetAmount > 0
+        ? donation.creatorSettlementNetAmount
+        : Math.max(0, creatorShare - creatorSettlementVat)
+
+    return {
+      creatorShare,
+      creatorSettlementVat,
+      creatorSettlementNetAmount,
+    }
+  }
+
+  const getSettledAndPending = (donation: Donation) => {
+    const { creatorShare, creatorSettlementNetAmount } = getMonnifyCreatorSettlement(donation)
     const provider = String(donation.provider || "monnify").toLowerCase()
     const fundsFlow = String(donation.fundsFlow || "wallet").toLowerCase()
+    const isMonnifySettlementTracked =
+      provider === "monnify" && (fundsFlow === "wallet" || fundsFlow === "direct_split")
     const settlementStatus = String(donation.settlementStatus || "").toLowerCase()
     const status = String(donation.status || "").toLowerCase()
     const walletStatus = String(donation.walletStatus || "available").toLowerCase()
@@ -278,8 +301,8 @@ export default function EarningsPage() {
       return { settled: 0, pending: 0, creatorShare }
     }
 
-    if (provider === "monnify" && fundsFlow === "wallet") {
-      if (donationDate < MONNIFY_SPLIT_CUTOVER_AT) {
+    if (isMonnifySettlementTracked) {
+      if (fundsFlow === "wallet" && donationDate < MONNIFY_SPLIT_CUTOVER_AT) {
         return { settled: creatorShare, pending: 0, creatorShare }
       }
 
@@ -287,7 +310,7 @@ export default function EarningsPage() {
         0,
         Number(
           donation.creatorSettledAmount ??
-            (settlementStatus === "settled" || status === "completed" ? creatorShare : 0),
+            (settlementStatus === "settled" || status === "completed" ? creatorSettlementNetAmount : 0),
         ) || 0,
       )
       const pending = Math.max(
@@ -295,7 +318,7 @@ export default function EarningsPage() {
         Number(
           donation.settlementPendingAmount ??
             (settlementStatus === "pending" || settlementStatus === "partial" || status === "pending"
-              ? Math.max(0, creatorShare - settled)
+              ? Math.max(0, creatorSettlementNetAmount - settled)
               : 0),
         ) || 0,
       )
@@ -375,22 +398,21 @@ export default function EarningsPage() {
     Number(settlementTotals.settled - totalWithdrawn),
   )
   const pendingReviewBalance = useMemo(() => {
-    const now = new Date()
-    const pendingToday = donations.reduce((sum, donation) => {
+    const pendingSettlement = donations.reduce((sum, donation) => {
       const donationDate = normalizeDate(donation.date || donation.createdAt)
-      const isToday =
-        donationDate.getDate() === now.getDate() &&
-        donationDate.getMonth() === now.getMonth() &&
-        donationDate.getFullYear() === now.getFullYear()
+      const provider = String(donation.provider || "monnify").toLowerCase()
+      const fundsFlow = String(donation.fundsFlow || "wallet").toLowerCase()
+      const isMonnifySettlementTracked =
+        provider === "monnify" && (fundsFlow === "wallet" || fundsFlow === "direct_split")
 
-      if (!isToday || donationDate < MONNIFY_SPLIT_CUTOVER_AT) {
+      if (!isMonnifySettlementTracked || (fundsFlow === "wallet" && donationDate < MONNIFY_SPLIT_CUTOVER_AT)) {
         return sum
       }
 
       return sum + getSettledAndPending(donation).pending
     }, 0)
 
-    return Math.max(0, Number(pendingToday))
+    return Math.max(0, Number(pendingSettlement))
   }, [donations])
   const confirmedSettledEarnings = Math.max(0, availableBalance + totalWithdrawn)
   const donationsReceived = Math.max(0, settlementTotals.settled + settlementTotals.pending)
@@ -595,6 +617,9 @@ export default function EarningsPage() {
           Available Balance only increases after Monnify confirms settlement. Successful gifts remain
           in pending earnings until settlement is confirmed.
         </p>
+        <p className="mt-2 text-xs text-zinc-500">
+          StreamTip keeps 20% as the platform fee. Monnify V.A.T is 2.02% and is deducted from the creator&apos;s 80% settlement before it reaches the bank.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -606,7 +631,7 @@ export default function EarningsPage() {
           glowing
         />
         <EarningsSummaryCard
-          title="Pending Settled (Today)"
+          title="Pending Settlement"
           amount={pendingReviewBalance}
           icon={BarChart3}
           accentColor="amber"
