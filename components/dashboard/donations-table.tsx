@@ -20,6 +20,7 @@ export interface Donation {
   createdAt?: string | Date
   status?: string
   walletStatus?: "available" | "pending_review" | "rejected"
+  paymentStatus?: string
   transactionReference?: string
   provider?: string
 }
@@ -73,8 +74,14 @@ export function DonationsTable({
               displayDonations.map((donation) => {
                 const donorName = donation.senderName || donation.sender || "Anonymous"
                 const amount = Number(donation.amount) || 0
+                const isPaidMonnifyDonation =
+                  String(donation.provider || "").toLowerCase() === "monnify" &&
+                  String(donation.paymentStatus || "").toUpperCase() === "PAID" &&
+                  donation.walletStatus !== "rejected" &&
+                  donation.status !== "failed"
                 const isPendingReview =
-                  donation.walletStatus === "pending_review" || donation.status === "pending"
+                  !isPaidMonnifyDonation &&
+                  (donation.walletStatus === "pending_review" || donation.status === "pending")
 
                 return (
                   <TableRow key={donation._id} className="border-zinc-800">

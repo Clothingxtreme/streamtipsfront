@@ -226,7 +226,7 @@ function isSettledDonation(value: IncomingDonation) {
   if (
     provider === "monnify" &&
     (fundsFlow === "direct_split" || fundsFlow === "wallet") &&
-    paymentStatus === "PAID" &&
+    (paymentStatus === "PAID" || Boolean(value.transactionReference)) &&
     !["rejected", "failed", "migration_hold"].includes(walletStatus) &&
     !["rejected", "failed"].includes(status)
   ) {
