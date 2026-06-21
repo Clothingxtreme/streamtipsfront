@@ -299,6 +299,7 @@ export default function Overlay({
   const previewStartedRef = useRef(false)
   const audioContextRef = useRef<AudioContext | null>(null)
   const shownDonationIdsRef = useRef<Set<string>>(new Set())
+  const alertedDonationIdsRef = useRef<Set<string>>(new Set())
   const countedDonationIdsRef = useRef<Set<string>>(new Set())
   const overlayMountedAtRef = useRef(Date.now())
   const socketConnectedRef = useRef(false)
@@ -584,9 +585,9 @@ export default function Overlay({
   const processDonation = useCallback(
     (
       incoming: IncomingDonation,
-      options: { updateTotals?: boolean; forceAlert?: boolean } = {},
+      options: { updateTotals?: boolean; forceAlert?: boolean; queueAlert?: boolean } = {},
     ) => {
-      const { updateTotals = true, forceAlert = false } = options
+      const { updateTotals = true, forceAlert = false, queueAlert = true } = options
       const donation = {
         senderName: getPublicDonorDisplayName(
           incoming.senderName || incoming.sender,
@@ -655,7 +656,7 @@ export default function Overlay({
         }
       })
 
-      if (settings.animations || forceAlert) {
+      if (queueAlert && (settings.animations || forceAlert)) {
         setQueue((current) => {
           if (fullDonation.amount >= 15000) {
             return [fullDonation, ...current]
@@ -704,7 +705,9 @@ export default function Overlay({
       shownDonationIdsRef.current.add(getDonationIdentity(incomingDonation))
       processDonation(
         incomingDonation,
-        settledDonation ? undefined : { updateTotals: false, forceAlert: true },
+        settledDonation
+          ? { queueAlert: false }
+          : { updateTotals: false, forceAlert: false, queueAlert: false },
       )
     })
     socket.on("overlayAlert", (data) => {
@@ -729,10 +732,11 @@ export default function Overlay({
       }
       const donationIdentity = getDonationIdentity(incomingDonation)
 
-      if (shownDonationIdsRef.current.has(donationIdentity)) {
+      if (alertedDonationIdsRef.current.has(donationIdentity)) {
         return
       }
 
+      alertedDonationIdsRef.current.add(donationIdentity)
       shownDonationIdsRef.current.add(donationIdentity)
       lastRealtimeEventAtRef.current = Date.now()
       processDonation(
