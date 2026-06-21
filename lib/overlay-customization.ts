@@ -1,5 +1,6 @@
 export type GiftPackId = "tiktok" | "cosmic" | "luxury"
 export type StreamPlatformId = "tiktok" | "twitch" | "youtube" | "kick"
+export type LeaderboardDisplayMode = "top5" | "champion"
 export type OverlayAnchor =
   | "top-left"
   | "top-center"
@@ -30,6 +31,7 @@ export interface OverlayCustomization {
   leaderboardOpacity: number
   accountOpacity: number
   showLeaderboard: boolean
+  leaderboardDisplayMode: LeaderboardDisplayMode
   showGoal: boolean
   showAccountDetails: boolean
   showTopSupporter: boolean
@@ -101,6 +103,7 @@ export const defaultOverlayCustomization: OverlayCustomization = {
   leaderboardOpacity: 0.88,
   accountOpacity: 0.9,
   showLeaderboard: true,
+  leaderboardDisplayMode: "top5",
   showGoal: true,
   showAccountDetails: true,
   showTopSupporter: true,
@@ -255,6 +258,11 @@ export function sanitizeOverlayCustomization(value: unknown): OverlayCustomizati
       typeof candidate.showLeaderboard === "boolean"
         ? candidate.showLeaderboard
         : defaultOverlayCustomization.showLeaderboard,
+    leaderboardDisplayMode:
+      candidate.leaderboardDisplayMode === "champion" ||
+      candidate.leaderboardDisplayMode === "top5"
+        ? candidate.leaderboardDisplayMode
+        : defaultOverlayCustomization.leaderboardDisplayMode,
     showGoal:
       typeof candidate.showGoal === "boolean"
         ? candidate.showGoal

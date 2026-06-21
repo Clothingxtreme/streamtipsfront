@@ -895,7 +895,10 @@ export default function Overlay({
               }}
             >
               <div className="rounded-[30px] bg-black/28 p-1 backdrop-blur-xl">
-                <Leaderboard contributors={contributors} />
+                <Leaderboard
+                  contributors={contributors}
+                  maxItems={customization.leaderboardDisplayMode === "champion" ? 1 : 5}
+                />
               </div>
             </div>
           </div>
