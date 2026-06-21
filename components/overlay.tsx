@@ -41,6 +41,9 @@ type IncomingDonation = {
   senderNameSource?: string
   amount: unknown
   manual?: boolean
+  provider?: string
+  fundsFlow?: string
+  paymentStatus?: string
   walletStatus?: string
   status?: string
   transactionReference?: string
@@ -216,6 +219,19 @@ function getDonationIdentity(value: IncomingDonation) {
 function isSettledDonation(value: IncomingDonation) {
   const walletStatus = String(value.walletStatus || "available").toLowerCase()
   const status = String(value.status || "").toLowerCase()
+  const provider = String(value.provider || "").toLowerCase()
+  const fundsFlow = String(value.fundsFlow || "").toLowerCase()
+  const paymentStatus = String(value.paymentStatus || "").toUpperCase()
+
+  if (
+    provider === "monnify" &&
+    (fundsFlow === "direct_split" || fundsFlow === "wallet") &&
+    paymentStatus === "PAID" &&
+    walletStatus === "available" &&
+    !["rejected", "failed"].includes(status)
+  ) {
+    return true
+  }
 
   return !["pending", "pending_review", "rejected", "failed"].includes(walletStatus) &&
     !["pending", "pending_review", "rejected", "failed"].includes(status)
@@ -671,6 +687,9 @@ export default function Overlay({
         senderName: data.senderName || data.sender,
         senderNameSource: data.senderNameSource,
         amount: data.amount,
+        provider: data.provider,
+        fundsFlow: data.fundsFlow,
+        paymentStatus: data.paymentStatus,
         walletStatus: data.walletStatus,
         status: data.status,
         transactionReference: data.transactionReference,
@@ -696,6 +715,9 @@ export default function Overlay({
         _id: data._id,
         senderName: data.senderName || data.displayName || data.sender,
         amount: data.amount,
+        provider: data.provider,
+        fundsFlow: data.fundsFlow,
+        paymentStatus: data.paymentStatus,
         walletStatus: data.walletStatus || data.status || "available",
         status: data.status || "available",
         transactionReference: data.transactionReference,

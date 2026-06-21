@@ -38,6 +38,9 @@ export type PublicOverlayStatePayload = OverlayStatePayload & {
     sender?: string
     senderName?: string
     senderNameSource?: string
+    provider?: string
+    fundsFlow?: string
+    paymentStatus?: string
     walletStatus?: string
     status?: string
     date?: string
