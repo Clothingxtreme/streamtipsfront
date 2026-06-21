@@ -67,7 +67,7 @@ type WithdrawResult =
 
 const MIN_WITHDRAWAL = 5000
 const CREATOR_SHARE_RATE = 0.8
-const MONNIFY_CREATOR_SETTLEMENT_VAT_RATE = 0.0202
+const MONNIFY_CREATOR_SETTLEMENT_VAT_RATE = 0.0161
 const MONNIFY_SPLIT_CUTOVER_AT = new Date("2026-05-20T14:00:00+01:00")
 
 function normalizePayoutStatus(status: unknown): Payout["status"] {
@@ -618,7 +618,7 @@ export default function EarningsPage() {
           in pending earnings until settlement is confirmed.
         </p>
         <p className="mt-2 text-xs text-zinc-500">
-          StreamTip keeps 20% as the platform fee. Monnify V.A.T is 2.02% and is deducted from the creator&apos;s 80% settlement before it reaches the bank.
+          StreamTip keeps 20% as the platform fee. Monnify V.A.T is 1.61% and is deducted from the creator&apos;s 80% settlement before it reaches the bank.
         </p>
       </div>
 
