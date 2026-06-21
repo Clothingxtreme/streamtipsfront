@@ -15,6 +15,11 @@ type Donation = {
   sender?: string
   senderName?: string
   createdAt?: string | Date
+  provider?: string
+  fundsFlow?: string
+  paymentStatus?: string
+  walletStatus?: string
+  status?: string
 }
 
 type DonationsContextType = {
@@ -29,6 +34,18 @@ const normalizeDonation = (donation: any): Donation => ({
   senderName: donation.senderName || donation.sender || "Anonymous",
   sender: donation.sender || donation.senderName || "Anonymous",
   createdAt: donation.createdAt ? new Date(donation.createdAt) : donation.createdAt,
+  walletStatus:
+    String(donation.provider || "").toLowerCase() === "monnify" &&
+    String(donation.paymentStatus || "").toUpperCase() === "PAID" &&
+    String(donation.walletStatus || "").toLowerCase() !== "rejected"
+      ? "available"
+      : donation.walletStatus,
+  status:
+    String(donation.provider || "").toLowerCase() === "monnify" &&
+    String(donation.paymentStatus || "").toUpperCase() === "PAID" &&
+    String(donation.walletStatus || "").toLowerCase() !== "rejected"
+      ? "completed"
+      : donation.status,
 })
 
 export const DonationsProvider = ({ children }: { children: ReactNode }) => {

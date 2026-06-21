@@ -37,6 +37,7 @@ export default function DonationsPage() {
           const provider = String(d.provider || "monnify").toLowerCase()
           const rawStatus = String(d.status || "").toLowerCase()
           const rawWalletStatus = String(d.walletStatus || "").toLowerCase()
+          const paymentStatus = String(d.paymentStatus || "").toUpperCase()
           const fundsFlow = String(d.fundsFlow || "wallet").toLowerCase()
           const settlementStatus = String(d.settlementStatus || "").toLowerCase()
           const isLegacyBeforeSplitCutover =
@@ -47,6 +48,11 @@ export default function DonationsPage() {
             rawStatus === "failed" ||
             rawWalletStatus === "rejected" ||
             settlementStatus === "failed"
+          const isPaidMonnifyDonation =
+            provider === "monnify" &&
+            paymentStatus === "PAID" &&
+            rawWalletStatus !== "rejected" &&
+            rawStatus !== "failed"
           const isPendingNewSettlementFlow =
             rawStatus === "pending" ||
             rawWalletStatus === "pending_review" ||
@@ -56,6 +62,8 @@ export default function DonationsPage() {
           let normalizedStatus: "completed" | "pending" | "failed" = "completed"
           if (isFailed) {
             normalizedStatus = "failed"
+          } else if (isPaidMonnifyDonation) {
+            normalizedStatus = "completed"
           } else if (!isLegacyBeforeSplitCutover && isPendingNewSettlementFlow) {
             normalizedStatus = "pending"
           }

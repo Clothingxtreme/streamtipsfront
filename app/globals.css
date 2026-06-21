@@ -145,24 +145,40 @@
 }
 
 .leaderboard-champion {
-  animation: leaderboardChampionPulse 2.6s ease-in-out infinite;
+  animation: leaderboardChampionPulse 2.3s ease-in-out infinite;
+}
+
+.leaderboard-champion-rank {
+  animation: leaderboardChampionRankPop 1.8s ease-in-out infinite;
 }
 
 .leaderboard-champion-shine {
-  animation: leaderboardChampionShine 3.4s ease-in-out infinite;
+  animation: leaderboardChampionShine 2.8s ease-in-out infinite;
 }
 
 @keyframes leaderboardChampionPulse {
   0%, 100% {
     box-shadow:
-      0 0 28px rgba(251, 191, 36, 0.28),
-      inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      0 0 36px rgba(251, 191, 36, 0.38),
+      0 0 76px rgba(217, 70, 239, 0.14),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
   }
   50% {
     box-shadow:
-      0 0 44px rgba(251, 191, 36, 0.52),
-      0 0 70px rgba(217, 70, 239, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.28);
+      0 0 62px rgba(251, 191, 36, 0.72),
+      0 0 110px rgba(217, 70, 239, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+}
+
+@keyframes leaderboardChampionRankPop {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.08);
+    filter: brightness(1.18);
   }
 }
 

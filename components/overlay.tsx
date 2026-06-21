@@ -41,6 +41,9 @@ type IncomingDonation = {
   senderNameSource?: string
   amount: unknown
   manual?: boolean
+  provider?: string
+  fundsFlow?: string
+  paymentStatus?: string
   walletStatus?: string
   status?: string
   transactionReference?: string
@@ -216,6 +219,19 @@ function getDonationIdentity(value: IncomingDonation) {
 function isSettledDonation(value: IncomingDonation) {
   const walletStatus = String(value.walletStatus || "available").toLowerCase()
   const status = String(value.status || "").toLowerCase()
+  const provider = String(value.provider || "").toLowerCase()
+  const fundsFlow = String(value.fundsFlow || "").toLowerCase()
+  const paymentStatus = String(value.paymentStatus || "").toUpperCase()
+
+  if (
+    provider === "monnify" &&
+    (fundsFlow === "direct_split" || fundsFlow === "wallet") &&
+    (paymentStatus === "PAID" || Boolean(value.transactionReference)) &&
+    !["rejected", "failed", "migration_hold"].includes(walletStatus) &&
+    !["rejected", "failed"].includes(status)
+  ) {
+    return true
+  }
 
   return !["pending", "pending_review", "rejected", "failed"].includes(walletStatus) &&
     !["pending", "pending_review", "rejected", "failed"].includes(status)
@@ -283,6 +299,8 @@ export default function Overlay({
   const previewStartedRef = useRef(false)
   const audioContextRef = useRef<AudioContext | null>(null)
   const shownDonationIdsRef = useRef<Set<string>>(new Set())
+  const alertedDonationIdsRef = useRef<Set<string>>(new Set())
+  const countedDonationIdsRef = useRef<Set<string>>(new Set())
   const overlayMountedAtRef = useRef(Date.now())
   const socketConnectedRef = useRef(false)
   const lastRealtimeEventAtRef = useRef(0)
@@ -567,9 +585,9 @@ export default function Overlay({
   const processDonation = useCallback(
     (
       incoming: IncomingDonation,
-      options: { updateTotals?: boolean; forceAlert?: boolean } = {},
+      options: { updateTotals?: boolean; forceAlert?: boolean; queueAlert?: boolean } = {},
     ) => {
-      const { updateTotals = true, forceAlert = false } = options
+      const { updateTotals = true, forceAlert = false, queueAlert = true } = options
       const donation = {
         senderName: getPublicDonorDisplayName(
           incoming.senderName || incoming.sender,
@@ -598,7 +616,8 @@ export default function Overlay({
         void playGiftSound(fullDonation.amount)
       }
 
-      if (updateTotals && settledDonation) {
+      if (updateTotals && settledDonation && !countedDonationIdsRef.current.has(fullDonation.id)) {
+        countedDonationIdsRef.current.add(fullDonation.id)
         setTotalDonations((current) => current + fullDonation.amount)
 
         if (incoming.manual) {
@@ -637,7 +656,7 @@ export default function Overlay({
         }
       })
 
-      if (settings.animations || forceAlert) {
+      if (queueAlert && (settings.animations || forceAlert)) {
         setQueue((current) => {
           if (fullDonation.amount >= 15000) {
             return [fullDonation, ...current]
@@ -671,6 +690,9 @@ export default function Overlay({
         senderName: data.senderName || data.sender,
         senderNameSource: data.senderNameSource,
         amount: data.amount,
+        provider: data.provider,
+        fundsFlow: data.fundsFlow,
+        paymentStatus: data.paymentStatus,
         walletStatus: data.walletStatus,
         status: data.status,
         transactionReference: data.transactionReference,
@@ -683,7 +705,9 @@ export default function Overlay({
       shownDonationIdsRef.current.add(getDonationIdentity(incomingDonation))
       processDonation(
         incomingDonation,
-        settledDonation ? undefined : { updateTotals: false, forceAlert: true },
+        settledDonation
+          ? { queueAlert: false }
+          : { updateTotals: false, forceAlert: false, queueAlert: false },
       )
     })
     socket.on("overlayAlert", (data) => {
@@ -696,6 +720,9 @@ export default function Overlay({
         _id: data._id,
         senderName: data.senderName || data.displayName || data.sender,
         amount: data.amount,
+        provider: data.provider,
+        fundsFlow: data.fundsFlow,
+        paymentStatus: data.paymentStatus,
         walletStatus: data.walletStatus || data.status || "available",
         status: data.status || "available",
         transactionReference: data.transactionReference,
@@ -705,13 +732,17 @@ export default function Overlay({
       }
       const donationIdentity = getDonationIdentity(incomingDonation)
 
-      if (shownDonationIdsRef.current.has(donationIdentity)) {
+      if (alertedDonationIdsRef.current.has(donationIdentity)) {
         return
       }
 
+      alertedDonationIdsRef.current.add(donationIdentity)
       shownDonationIdsRef.current.add(donationIdentity)
       lastRealtimeEventAtRef.current = Date.now()
-      processDonation(incomingDonation, { updateTotals: false, forceAlert: true })
+      processDonation(
+        incomingDonation,
+        isSettledDonation(incomingDonation) ? { forceAlert: true } : { updateTotals: false, forceAlert: true },
+      )
     })
     socket.on("connect", () => {
       socketConnectedRef.current = true
@@ -754,7 +785,7 @@ export default function Overlay({
 
     newDonations.forEach((donation) => {
       shownDonationIdsRef.current.add(getDonationIdentity(donation))
-      processDonation(donation, { updateTotals: false, forceAlert: true })
+      processDonation(donation, { forceAlert: true })
     })
   }, [isPublicOverlay, processDonation, publicState?.donations])
 
