@@ -614,11 +614,11 @@ export default function EarningsPage() {
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 sm:p-5">
         <p className="text-sm text-zinc-300">
-          Available Balance only increases after Monnify confirms settlement. Successful gifts remain
-          in pending earnings until settlement is confirmed.
+          Pending Settlement clears automatically at 10:20pm daily. Gifts received after 10:00pm
+          stay pending until the next day&apos;s 10:20pm clearing.
         </p>
         <p className="mt-2 text-xs text-zinc-500">
-          StreamTip keeps 20% as the platform fee. Monnify V.A.T is 1.61% and is deducted from the creator&apos;s 80% settlement before it reaches the bank.
+          New creators clear for the first time on their second day at 10:20pm, then follow the daily schedule. StreamTip keeps 20% as the platform fee. Monnify V.A.T is 1.61% and is deducted from the creator&apos;s 80% settlement before it reaches the bank.
         </p>
       </div>
 
