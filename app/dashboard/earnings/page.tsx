@@ -68,6 +68,10 @@ const MIN_WITHDRAWAL = 5000
 const CREATOR_SHARE_RATE = 0.8
 const MONNIFY_CREATOR_SETTLEMENT_VAT_RATE = 0.0161
 const MONNIFY_SPLIT_CUTOVER_AT = new Date("2026-05-20T14:00:00+01:00")
+const MONNIFY_SETTLEMENT_CUTOFF_HOUR = 21
+const MONNIFY_SETTLEMENT_CUTOFF_MINUTE = 50
+const MONNIFY_SETTLEMENT_CLEAR_HOUR = 22
+const MONNIFY_SETTLEMENT_CLEAR_MINUTE = 0
 
 function normalizePayoutStatus(status: unknown): Payout["status"] {
   if (
@@ -153,6 +157,39 @@ function startOfWeek(value = new Date()) {
 
 function startOfMonth(value = new Date()) {
   return new Date(value.getFullYear(), value.getMonth(), 1)
+}
+
+function getSettlementDateAt(base: Date, hour: number, minute: number) {
+  const date = new Date(base)
+  date.setHours(hour, minute, 0, 0)
+  return date
+}
+
+function getActivePendingSettlementWindow(now = new Date()) {
+  const todayCutoff = getSettlementDateAt(
+    now,
+    MONNIFY_SETTLEMENT_CUTOFF_HOUR,
+    MONNIFY_SETTLEMENT_CUTOFF_MINUTE,
+  )
+  const todayClear = getSettlementDateAt(
+    now,
+    MONNIFY_SETTLEMENT_CLEAR_HOUR,
+    MONNIFY_SETTLEMENT_CLEAR_MINUTE,
+  )
+
+  if (now >= todayClear) {
+    const nextClear = new Date(todayClear)
+    nextClear.setDate(todayClear.getDate() + 1)
+    return { start: todayCutoff, end: nextClear }
+  }
+
+  const previousCutoff = new Date(todayCutoff)
+  previousCutoff.setDate(todayCutoff.getDate() - 1)
+  return { start: previousCutoff, end: todayClear }
+}
+
+function isInsideDateWindow(date: Date, window: { start: Date; end: Date }) {
+  return date >= window.start && date < window.end
 }
 
 export default function EarningsPage() {
@@ -436,18 +473,28 @@ export default function EarningsPage() {
     Number(settlementTotals.settled - totalWithdrawn),
   )
   const pendingReviewBalance = useMemo(() => {
+    const activeWindow = getActivePendingSettlementWindow()
     const pendingSettlement = donations.reduce((sum, donation) => {
       const donationDate = normalizeDate(donation.date || donation.createdAt)
       const provider = String(donation.provider || "monnify").toLowerCase()
       const fundsFlow = String(donation.fundsFlow || "wallet").toLowerCase()
+      const settlementStatus = String(donation.settlementStatus || "").toLowerCase()
+      const status = String(donation.status || "").toLowerCase()
+      const walletStatus = String(donation.walletStatus || "available").toLowerCase()
       const isMonnifySettlementTracked =
         provider === "monnify" && (fundsFlow === "wallet" || fundsFlow === "direct_split")
+      const isRejected = walletStatus === "rejected" || status === "failed" || settlementStatus === "failed"
 
-      if (!isMonnifySettlementTracked || (fundsFlow === "wallet" && donationDate < MONNIFY_SPLIT_CUTOVER_AT)) {
+      if (
+        !isMonnifySettlementTracked ||
+        isRejected ||
+        (fundsFlow === "wallet" && donationDate < MONNIFY_SPLIT_CUTOVER_AT) ||
+        !isInsideDateWindow(donationDate, activeWindow)
+      ) {
         return sum
       }
 
-      return sum + getSettledAndPending(donation).pending
+      return sum + getMonnifyCreatorSettlement(donation).creatorSettlementNetAmount
     }, 0)
 
     return Math.max(0, Number(pendingSettlement))
@@ -646,11 +693,11 @@ export default function EarningsPage() {
 
       <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 sm:p-5">
         <p className="text-sm text-zinc-300">
-          Pending Settlement clears automatically at 10:20pm daily. Gifts received after 10:00pm
-          stay pending until the next day&apos;s 10:20pm clearing.
+          Pending Settlement follows the active 10:00pm clearing window. Gifts received after
+          9:50pm stay pending until the next day&apos;s 10:00pm clearing.
         </p>
         <p className="mt-2 text-xs text-zinc-500">
-          New creators clear for the first time on their second day at 10:20pm, then follow the daily schedule. StreamTip keeps 20% as the platform fee. Monnify V.A.T is 1.61% and is deducted from the creator&apos;s 80% settlement before it reaches the bank.
+          Stale pending records outside the active window are ignored on this page. StreamTip keeps 20% as the platform fee. Monnify V.A.T is 1.61% and is deducted from the creator&apos;s 80% settlement before it reaches the bank.
         </p>
       </div>
 
