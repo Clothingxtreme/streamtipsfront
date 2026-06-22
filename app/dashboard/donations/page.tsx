@@ -11,28 +11,110 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Search, Filter, TrendingUp, Wallet } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { ArrowDownLeft, ArrowUpRight, CalendarSearch, Filter, Search, TrendingUp, Wallet } from "lucide-react"
 import { authRequest } from "@/lib/auth-client"
 
 type StatusFilter = "all" | "completed" | "pending" | "failed"
+type DateMode = "month" | "range"
+type EnrichedDonation = DonationRecord & {
+  creatorSettlementNetAmount: number
+  transactionReference?: string
+}
+type PayoutRecord = {
+  id: string
+  amount: number
+  status: string
+  bankName?: string
+  accountNumber?: string
+  createdAt: Date
+  completedAt?: Date
+}
+type TransactionLogEntry = {
+  id: string
+  type: "in" | "out"
+  name: string
+  amount: number
+  date: Date
+  status: string
+  reference?: string
+}
+
 const CREATOR_SHARE_RATE = 0.8
+const MONNIFY_CREATOR_SETTLEMENT_VAT_RATE = 0.0161
 const MONNIFY_SPLIT_CUTOVER_AT = new Date("2026-05-20T14:00:00+01:00")
 
+function formatCurrency(amount: number) {
+  return `NGN ${(Number(amount) || 0).toLocaleString()}`
+}
+
+function formatDateInput(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function formatMonthInput(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  return `${year}-${month}`
+}
+
+function startOfDay(date: Date) {
+  const value = new Date(date)
+  value.setHours(0, 0, 0, 0)
+  return value
+}
+
+function endExclusiveDay(date: Date) {
+  const value = startOfDay(date)
+  value.setDate(value.getDate() + 1)
+  return value
+}
+
+function getCreatorSettlementNetAmount(rawDonation: any) {
+  const amount = Number(rawDonation.amount) || 0
+  const creatorShare =
+    Number(rawDonation.creatorShare) || Math.round(amount * CREATOR_SHARE_RATE)
+  const savedNet = Number(rawDonation.creatorSettlementNetAmount)
+  const savedVat = Number(rawDonation.creatorSettlementVat)
+  const vat =
+    Number.isFinite(savedVat) && savedVat > 0
+      ? savedVat
+      : Math.round(creatorShare * MONNIFY_CREATOR_SETTLEMENT_VAT_RATE)
+
+  return Number.isFinite(savedNet) && savedNet > 0
+    ? savedNet
+    : Math.max(0, creatorShare - vat)
+}
+
 export default function DonationsPage() {
-  const [donations, setDonations] = useState<DonationRecord[]>([])
+  const [donations, setDonations] = useState<EnrichedDonation[]>([])
+  const [payouts, setPayouts] = useState<PayoutRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [minAmount, setMinAmount] = useState("")
   const [maxAmount, setMaxAmount] = useState("")
+  const [dateMode, setDateMode] = useState<DateMode>("month")
+  const [selectedMonth, setSelectedMonth] = useState(() => formatMonthInput(new Date()))
+  const [startDate, setStartDate] = useState(() => formatDateInput(new Date()))
+  const [endDate, setEndDate] = useState(() => formatDateInput(new Date()))
 
   useEffect(() => {
-    const fetchDonations = async () => {
+    const fetchRecords = async () => {
       setIsLoading(true)
       try {
-        const response = await authRequest("/donations")
-        const data = await response.json()
-        const formatted = (Array.isArray(data) ? data : []).map((d: any) => {
+        const [donationsResponse, payoutsResponse] = await Promise.all([
+          authRequest("/donations"),
+          authRequest("/payouts"),
+        ])
+        const [data, payoutData] = await Promise.all([
+          donationsResponse.json(),
+          payoutsResponse.json(),
+        ])
+        const formatted: EnrichedDonation[] = (Array.isArray(data) ? data : []).map((d: any) => {
           const date = new Date(d.createdAt || d.date || Date.now())
           const provider = String(d.provider || "monnify").toLowerCase()
           const rawStatus = String(d.status || "").toLowerCase()
@@ -79,19 +161,46 @@ export default function DonationsPage() {
             message: d.message || d.alertMessage || "",
             provider,
             transactionReference: d.transactionReference || d.paystackReference || "",
+            creatorSettlementNetAmount: getCreatorSettlementNetAmount(d),
           }
         })
+        const formattedPayouts: PayoutRecord[] = (Array.isArray(payoutData) ? payoutData : []).map((payout: any) => ({
+          id: payout.id || payout._id || payout.transferReference || crypto.randomUUID(),
+          amount: Number(payout.amount) || 0,
+          status: String(payout.status || "pending").toLowerCase(),
+          bankName: payout.bankName || "",
+          accountNumber: payout.accountNumber || "",
+          createdAt: new Date(payout.createdAt || Date.now()),
+          completedAt: payout.completedAt ? new Date(payout.completedAt) : undefined,
+        }))
 
         setDonations(formatted)
+        setPayouts(formattedPayouts)
       } catch (error) {
-        console.error("Failed to fetch donations:", error)
+        console.error("Failed to fetch donation records:", error)
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchDonations()
+    fetchRecords()
   }, [])
+
+  const dateWindow = useMemo(() => {
+    if (dateMode === "range") {
+      const start = startOfDay(new Date(startDate || Date.now()))
+      const end = endExclusiveDay(new Date(endDate || startDate || Date.now()))
+      return start <= end ? { start, end } : { start: end, end: endExclusiveDay(start) }
+    }
+
+    const [yearText, monthText] = selectedMonth.split("-")
+    const year = Number(yearText) || new Date().getFullYear()
+    const month = Math.max(0, (Number(monthText) || new Date().getMonth() + 1) - 1)
+    return {
+      start: new Date(year, month, 1),
+      end: new Date(year, month + 1, 1),
+    }
+  }, [dateMode, endDate, selectedMonth, startDate])
 
   const filteredDonations = useMemo(() => {
     let result = [...donations]
@@ -118,6 +227,61 @@ export default function DonationsPage() {
     result.sort((a, b) => b.date.getTime() - a.date.getTime())
     return result
   }, [donations, maxAmount, minAmount, searchQuery, statusFilter])
+
+  const transactionEntries = useMemo<TransactionLogEntry[]>(() => {
+    const query = searchQuery.toLowerCase().trim()
+    const donationEntries: TransactionLogEntry[] = donations
+      .filter((donation) => donation.date >= dateWindow.start && donation.date < dateWindow.end)
+      .map((donation) => ({
+        id: `in-${donation.id}`,
+        type: "in",
+        name: donation.donorName || "Anonymous",
+        amount: donation.creatorSettlementNetAmount,
+        date: donation.date,
+        status: donation.status,
+        reference: donation.transactionReference,
+      }))
+    const payoutEntries: TransactionLogEntry[] = payouts
+      .filter((payout) => {
+        const date = payout.completedAt || payout.createdAt
+        return date >= dateWindow.start && date < dateWindow.end
+      })
+      .map((payout) => ({
+        id: `out-${payout.id}`,
+        type: "out",
+        name: payout.bankName
+          ? `${payout.bankName}${payout.accountNumber ? ` - ${payout.accountNumber.slice(-4)}` : ""}`
+          : "Withdrawal",
+        amount: payout.amount,
+        date: payout.completedAt || payout.createdAt,
+        status: payout.status,
+      }))
+
+    return [...donationEntries, ...payoutEntries]
+      .filter((entry) => {
+        if (!query) return true
+        return (
+          entry.name.toLowerCase().includes(query) ||
+          String(entry.reference || "").toLowerCase().includes(query) ||
+          entry.status.toLowerCase().includes(query)
+        )
+      })
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+  }, [dateWindow.end, dateWindow.start, donations, payouts, searchQuery])
+
+  const transactionSummary = useMemo(() => {
+    return transactionEntries.reduce(
+      (summary, entry) => {
+        if (entry.type === "in") {
+          summary.in += entry.amount
+        } else if (entry.status === "completed" || entry.status === "success") {
+          summary.out += entry.amount
+        }
+        return summary
+      },
+      { in: 0, out: 0 },
+    )
+  }, [transactionEntries])
 
   const stats = useMemo(() => {
     const total = donations.reduce((sum, d) => sum + (Number(d.amount) || 0), 0)
@@ -231,6 +395,96 @@ export default function DonationsPage() {
             onChange={(e) => setMaxAmount(e.target.value)}
             className="w-full sm:w-[160px] bg-zinc-900/80 border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:border-purple-500 focus-visible:ring-purple-500/20"
           />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 sm:p-5 space-y-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-white">
+              <CalendarSearch className="h-5 w-5 text-emerald-400" />
+              <h2 className="text-lg font-semibold">Transaction Log</h2>
+            </div>
+            <p className="mt-1 text-sm text-zinc-500">
+              Track net money in after StreamTip&apos;s 20% and Monnify&apos;s 1.61% V.A.T, plus completed withdrawals out.
+            </p>
+          </div>
+          <div className="flex rounded-xl border border-zinc-800 bg-zinc-900/80 p-1">
+            <Button
+              type="button"
+              onClick={() => setDateMode("month")}
+              className={`h-9 px-4 ${dateMode === "month" ? "bg-emerald-500 text-black hover:bg-emerald-400" : "bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-white"}`}
+            >
+              Month
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setDateMode("range")}
+              className={`h-9 px-4 ${dateMode === "range" ? "bg-emerald-500 text-black hover:bg-emerald-400" : "bg-transparent text-zinc-400 hover:bg-zinc-800 hover:text-white"}`}
+            >
+              Range
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr] xl:grid-cols-[1fr_1fr_1fr_1fr]">
+          {dateMode === "month" ? (
+            <Input
+              type="month"
+              value={selectedMonth}
+              onChange={(event) => setSelectedMonth(event.target.value)}
+              className="bg-zinc-900/80 border-zinc-800 text-white focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20"
+            />
+          ) : (
+            <>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(event) => setStartDate(event.target.value)}
+                className="bg-zinc-900/80 border-zinc-800 text-white focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20"
+              />
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                className="bg-zinc-900/80 border-zinc-800 text-white focus-visible:border-emerald-500 focus-visible:ring-emerald-500/20"
+              />
+            </>
+          )}
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
+            <p className="text-xs text-zinc-500">In</p>
+            <p className="mt-1 text-lg font-black text-emerald-300">{formatCurrency(transactionSummary.in)}</p>
+          </div>
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3">
+            <p className="text-xs text-zinc-500">Out</p>
+            <p className="mt-1 text-lg font-black text-rose-300">{formatCurrency(transactionSummary.out)}</p>
+          </div>
+        </div>
+
+        <div className="divide-y divide-zinc-800 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/50">
+          {transactionEntries.length ? (
+            transactionEntries.slice(0, 12).map((entry) => (
+              <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${entry.type === "in" ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}`}>
+                  {entry.type === "in" ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-white">{entry.name}</p>
+                  <p className="text-xs text-zinc-500">
+                    {entry.date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    <span className="ml-2">{entry.status}</span>
+                  </p>
+                </div>
+                <p className={`text-sm font-black ${entry.type === "in" ? "text-emerald-300" : "text-rose-300"}`}>
+                  {entry.type === "in" ? "+" : "-"}{formatCurrency(entry.amount)}
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="px-4 py-8 text-center text-sm text-zinc-500">
+              No transactions found for this period.
+            </div>
+          )}
         </div>
       </div>
 

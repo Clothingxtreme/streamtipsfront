@@ -7,7 +7,6 @@ import {
   ArrowRight,
   BarChart3,
   CalendarDays,
-  CalendarRange,
   CheckCircle2,
   Landmark,
   ShieldCheck,
@@ -138,6 +137,22 @@ function formatCurrency(amount: number) {
 
 function normalizeDate(value?: string) {
   return new Date(value || Date.now())
+}
+
+function startOfDay(value = new Date()) {
+  const date = new Date(value)
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+function startOfWeek(value = new Date()) {
+  const date = startOfDay(value)
+  date.setDate(date.getDate() - date.getDay())
+  return date
+}
+
+function startOfMonth(value = new Date()) {
+  return new Date(value.getFullYear(), value.getMonth(), 1)
 }
 
 export default function EarningsPage() {
@@ -284,6 +299,29 @@ export default function EarningsPage() {
       creatorSettlementNetAmount,
     }
   }
+
+  const getNetDonationEarnings = (donation: Donation) => {
+    const settlement = getMonnifyCreatorSettlement(donation)
+    return settlement.creatorSettlementNetAmount
+  }
+
+  const isCountableDonation = (donation: Donation) => {
+    const settlementStatus = String(donation.settlementStatus || "").toLowerCase()
+    const status = String(donation.status || "").toLowerCase()
+    const walletStatus = String(donation.walletStatus || "available").toLowerCase()
+
+    return walletStatus !== "rejected" && status !== "failed" && settlementStatus !== "failed"
+  }
+
+  const sumNetDonationsBetween = (start: Date, end: Date) =>
+    donations.reduce((sum, donation) => {
+      const date = normalizeDate(donation.date || donation.createdAt)
+      if (!isCountableDonation(donation) || date < start || date >= end) {
+        return sum
+      }
+
+      return sum + getNetDonationEarnings(donation)
+    }, 0)
 
   const getSettledAndPending = (donation: Donation) => {
     const { creatorShare, creatorSettlementNetAmount } = getMonnifyCreatorSettlement(donation)
@@ -545,49 +583,43 @@ export default function EarningsPage() {
     }
   }
 
-  const weeklyEarnings = weeklyData.reduce((sum, item) => sum + item.amount, 0)
+  const dailyEarnings = useMemo(() => {
+    const today = startOfDay()
+    const tomorrow = new Date(today)
+    tomorrow.setDate(today.getDate() + 1)
+    return sumNetDonationsBetween(today, tomorrow)
+  }, [donations])
+  const previousDayEarnings = useMemo(() => {
+    const today = startOfDay()
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+    return sumNetDonationsBetween(yesterday, today)
+  }, [donations])
+
+  const weeklyEarnings = useMemo(() => {
+    const weekStart = startOfWeek()
+    const nextWeek = new Date(weekStart)
+    nextWeek.setDate(weekStart.getDate() + 7)
+    return sumNetDonationsBetween(weekStart, nextWeek)
+  }, [donations])
   const previousWeekEarnings = useMemo(() => {
     const now = new Date()
-    const startOfThisWeek = new Date(now)
-    startOfThisWeek.setDate(now.getDate() - now.getDay())
-    startOfThisWeek.setHours(0, 0, 0, 0)
+    const startOfThisWeek = startOfWeek(now)
     const startOfLastWeek = new Date(startOfThisWeek)
     startOfLastWeek.setDate(startOfThisWeek.getDate() - 7)
-    return donations.reduce((sum, donation) => {
-      const date = normalizeDate(donation.date || donation.createdAt)
-      return date >= startOfLastWeek && date < startOfThisWeek
-        ? sum + getSettledAndPending(donation).settled
-        : sum
-    }, 0)
+    return sumNetDonationsBetween(startOfLastWeek, startOfThisWeek)
   }, [donations])
 
-  const monthlyEarnings = monthlyData.reduce((sum, item) => sum + item.amount, 0)
+  const monthlyEarnings = useMemo(() => {
+    const monthStart = startOfMonth()
+    const nextMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1)
+    return sumNetDonationsBetween(monthStart, nextMonth)
+  }, [donations])
   const previousMonthEarnings = useMemo(() => {
     const now = new Date()
-    const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1
-    const prevMonthYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear()
-    return donations.reduce((sum, donation) => {
-      const date = normalizeDate(donation.date || donation.createdAt)
-      return date.getMonth() === prevMonth && date.getFullYear() === prevMonthYear
-        ? sum + getSettledAndPending(donation).settled
-        : sum
-    }, 0)
-  }, [donations])
-
-  const thisYearEarnings = useMemo(() => {
-    const year = new Date().getFullYear()
-    return donations.reduce((sum, donation) => {
-      const date = normalizeDate(donation.date || donation.createdAt)
-      return date.getFullYear() === year ? sum + getSettledAndPending(donation).settled : sum
-    }, 0)
-  }, [donations])
-
-  const lastYearEarnings = useMemo(() => {
-    const lastYear = new Date().getFullYear() - 1
-    return donations.reduce((sum, donation) => {
-      const date = normalizeDate(donation.date || donation.createdAt)
-      return date.getFullYear() === lastYear ? sum + getSettledAndPending(donation).settled : sum
-    }, 0)
+    const startOfThisMonth = startOfMonth(now)
+    const startOfPreviousMonth = new Date(startOfThisMonth.getFullYear(), startOfThisMonth.getMonth() - 1, 1)
+    return sumNetDonationsBetween(startOfPreviousMonth, startOfThisMonth)
   }, [donations])
 
   return (
@@ -646,24 +678,24 @@ export default function EarningsPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <EarningsSummaryCard
-          title="This Week"
-          amount={weeklyEarnings}
-          previousAmount={previousWeekEarnings}
+          title="Daily"
+          amount={dailyEarnings}
+          previousAmount={previousDayEarnings}
           icon={CalendarDays}
           accentColor="cyan"
         />
         <EarningsSummaryCard
-          title="This Month"
-          amount={monthlyEarnings}
-          previousAmount={previousMonthEarnings}
-          icon={TrendingUp}
+          title="Weekly"
+          amount={weeklyEarnings}
+          previousAmount={previousWeekEarnings}
+          icon={CalendarDays}
           accentColor="amber"
         />
         <EarningsSummaryCard
-          title="This Year"
-          amount={thisYearEarnings}
-          previousAmount={lastYearEarnings}
-          icon={CalendarRange}
+          title="Monthly"
+          amount={monthlyEarnings}
+          previousAmount={previousMonthEarnings}
+          icon={TrendingUp}
           accentColor="purple"
         />
       </div>
