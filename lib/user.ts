@@ -78,6 +78,15 @@ export interface AppUser {
   role?: "creator" | "admin"
   status?: "active" | "suspended" | "banned"
   profileImage?: string
+  socialProfile?: {
+    platform?: string
+    handle?: string
+    profileUrl?: string
+    liveUrl?: string
+    isLive?: boolean
+    notes?: string
+    updatedAt?: string
+  }
   phoneNumber?: string
   phoneVerified?: boolean
   kycTier?: 1 | 2 | 3 | 4
