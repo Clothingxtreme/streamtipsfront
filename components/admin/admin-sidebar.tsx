@@ -10,6 +10,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   LogOut,
+  RadioTower,
   ScrollText,
   ShieldCheck,
   Sparkles,
@@ -23,6 +24,7 @@ const navItems = [
   { label: "Platform Revenue", href: "/admin/platform-revenue", icon: ChartNoAxesColumn },
   { label: "Send Animation", href: "/admin/send-animation", icon: Sparkles },
   { label: "Manage Users", href: "/admin/users", icon: Users },
+  { label: "Creator Socials", href: "/admin/socials", icon: RadioTower },
   { label: "Platform Withdrawals", href: "/admin/platform-withdrawals", icon: ArrowDownToLine },
   { label: "Audit Logs", href: "/admin/logs", icon: ScrollText },
 ]
