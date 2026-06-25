@@ -905,6 +905,19 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-fuchsia-100/70">
+                  This saves only through your profile record, so your admin social card updates after refresh.
+                </p>
+                <Button
+                  type="button"
+                  onClick={handleProfileSave}
+                  disabled={saveState === "saving" || !user}
+                  className="bg-gradient-to-r from-fuchsia-500 to-rose-500 text-white hover:opacity-90"
+                >
+                  {saveState === "saving" ? "Saving..." : "Save Socials"}
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
