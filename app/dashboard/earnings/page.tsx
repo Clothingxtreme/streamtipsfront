@@ -697,7 +697,7 @@ export default function EarningsPage() {
           9:50pm stay pending until the next day&apos;s 10:00pm clearing.
         </p>
         <p className="mt-2 text-xs text-zinc-500">
-          Stale pending records outside the active window are ignored on this page. StreamTip keeps 20% as the platform fee. Monnify V.A.T is 1.61% and is deducted from the creator&apos;s 80% settlement before it reaches the bank.
+          Stale pending records outside the active window are ignored on this page. StreamTip keeps 20% as the platform fee. Monnify V.A.T ranges from 1.61-2.02% and is deducted from the creator&apos;s 80% settlement before it reaches the bank.
         </p>
       </div>
 
