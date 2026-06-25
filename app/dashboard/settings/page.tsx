@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useEffect, useMemo, useState, type ElementType } from "react"
 import {
   AlertTriangle,
+  AtSign,
   Bell,
   Building2,
   CalendarDays,
@@ -14,9 +15,11 @@ import {
   ImagePlus,
   KeyRound,
   Landmark,
+  Link2,
   LoaderCircle,
   Mail,
   Phone,
+  RadioTower,
   Save,
   Sparkles,
   User,
@@ -56,6 +59,10 @@ type ProfileForm = {
   phoneNumber: string
   dateOfBirth: string
   profileImage: string
+  socialPlatform: string
+  socialHandle: string
+  socialProfileUrl: string
+  socialLiveUrl: string
 }
 
 type PasswordForm = {
@@ -204,6 +211,10 @@ export default function SettingsPage() {
     phoneNumber: "",
     dateOfBirth: "",
     profileImage: "",
+    socialPlatform: "",
+    socialHandle: "",
+    socialProfileUrl: "",
+    socialLiveUrl: "",
   })
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
     currentPassword: "",
@@ -261,6 +272,10 @@ export default function SettingsPage() {
       phoneNumber: user?.phoneNumber || "",
       dateOfBirth: user?.identity?.dateOfBirth?.slice(0, 10) || "",
       profileImage: user?.profileImage || "",
+      socialPlatform: user?.socialProfile?.platform || "",
+      socialHandle: user?.socialProfile?.handle || "",
+      socialProfileUrl: user?.socialProfile?.profileUrl || "",
+      socialLiveUrl: user?.socialProfile?.liveUrl || "",
     })
     setIsLoadingUser(false)
   }, [user])
@@ -375,6 +390,10 @@ export default function SettingsPage() {
       profile.email !== (user?.email || "") ||
       profile.phoneNumber !== (user?.phoneNumber || "") ||
       profile.profileImage !== (user?.profileImage || "") ||
+      profile.socialPlatform !== (user?.socialProfile?.platform || "") ||
+      profile.socialHandle !== (user?.socialProfile?.handle || "") ||
+      profile.socialProfileUrl !== (user?.socialProfile?.profileUrl || "") ||
+      profile.socialLiveUrl !== (user?.socialProfile?.liveUrl || "") ||
       Boolean(kycForm.bvn || kycForm.nin)
     )
   }, [kycForm.bvn, kycForm.nin, profile, user])
@@ -451,6 +470,12 @@ export default function SettingsPage() {
           phoneNumber: profile.phoneNumber.trim(),
           dateOfBirth: profile.dateOfBirth.trim(),
           profileImage: profile.profileImage,
+          socialProfile: {
+            platform: profile.socialPlatform.trim(),
+            handle: profile.socialHandle.trim(),
+            profileUrl: profile.socialProfileUrl.trim(),
+            liveUrl: profile.socialLiveUrl.trim(),
+          },
           ...(kycForm.bvn ? { bvn: kycForm.bvn } : {}),
           ...(kycForm.nin ? { nin: kycForm.nin } : {}),
         }),
@@ -473,6 +498,10 @@ export default function SettingsPage() {
         phoneNumber: nextUser.phoneNumber || "",
         dateOfBirth: nextUser.identity?.dateOfBirth?.slice(0, 10) || "",
         profileImage: nextUser.profileImage || "",
+        socialPlatform: nextUser.socialProfile?.platform || "",
+        socialHandle: nextUser.socialProfile?.handle || "",
+        socialProfileUrl: nextUser.socialProfile?.profileUrl || "",
+        socialLiveUrl: nextUser.socialProfile?.liveUrl || "",
       })
       setKycForm({ bvn: "", nin: "" })
       setSaveState("saved")
@@ -798,6 +827,84 @@ export default function SettingsPage() {
                 placeholder="+2348012345678"
                 className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
               />
+            </div>
+
+            <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 p-4">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-fuchsia-500/20 p-2.5">
+                  <RadioTower className="h-5 w-5 text-fuchsia-200" />
+                </div>
+                <div>
+                  <p className="font-semibold text-white">Social profile and live page</p>
+                  <p className="mt-1 text-sm leading-6 text-fuchsia-100/75">
+                    Add the account you use for live streams so StreamTip can show it in admin and route support directly to your page.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-zinc-300">Main platform</label>
+                  <Select
+                    value={profile.socialPlatform || "tiktok"}
+                    onValueChange={(value) => handleProfileChange("socialPlatform", value)}
+                  >
+                    <SelectTrigger className="border-zinc-700 bg-zinc-950/70 text-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="border-zinc-800 bg-zinc-900">
+                      {["tiktok", "instagram", "youtube", "x", "twitch", "facebook", "other"].map((platform) => (
+                        <SelectItem
+                          key={platform}
+                          value={platform}
+                          className="text-white focus:bg-zinc-800 focus:text-white"
+                        >
+                          {platform === "x" ? "X / Twitter" : platform.charAt(0).toUpperCase() + platform.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+                    <AtSign className="h-4 w-4 text-zinc-500" />
+                    Handle
+                  </label>
+                  <Input
+                    value={profile.socialHandle}
+                    onChange={(event) => handleProfileChange("socialHandle", event.target.value.replace(/^@+/, ""))}
+                    placeholder="creatorhandle"
+                    className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+                    <Link2 className="h-4 w-4 text-zinc-500" />
+                    Profile link
+                  </label>
+                  <Input
+                    value={profile.socialProfileUrl}
+                    onChange={(event) => handleProfileChange("socialProfileUrl", event.target.value)}
+                    placeholder="https://www.tiktok.com/@creatorhandle"
+                    className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+                    <RadioTower className="h-4 w-4 text-zinc-500" />
+                    Live link
+                  </label>
+                  <Input
+                    value={profile.socialLiveUrl}
+                    onChange={(event) => handleProfileChange("socialLiveUrl", event.target.value)}
+                    placeholder="Optional direct live URL"
+                    className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
