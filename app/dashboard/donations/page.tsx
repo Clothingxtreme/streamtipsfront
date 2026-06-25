@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { DonationTable } from "@/components/donations/donation-table"
 import type { DonationRecord } from "@/components/donations/donation-row"
 import { Input } from "@/components/ui/input"
 import {
@@ -12,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { ArrowDownLeft, ArrowUpRight, CalendarSearch, Filter, Search, TrendingUp, Wallet } from "lucide-react"
+import { ArrowDownLeft, CalendarSearch, Filter, Search, TrendingUp, Wallet } from "lucide-react"
 import { authRequest } from "@/lib/auth-client"
 
 type StatusFilter = "all" | "completed" | "pending" | "failed"
@@ -21,18 +20,8 @@ type EnrichedDonation = DonationRecord & {
   creatorSettlementNetAmount: number
   transactionReference?: string
 }
-type PayoutRecord = {
-  id: string
-  amount: number
-  status: string
-  bankName?: string
-  accountNumber?: string
-  createdAt: Date
-  completedAt?: Date
-}
 type TransactionLogEntry = {
   id: string
-  type: "in" | "out"
   name: string
   amount: number
   date: Date
@@ -91,8 +80,6 @@ function getCreatorSettlementNetAmount(rawDonation: any) {
 
 export default function DonationsPage() {
   const [donations, setDonations] = useState<EnrichedDonation[]>([])
-  const [payouts, setPayouts] = useState<PayoutRecord[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [minAmount, setMinAmount] = useState("")
@@ -104,16 +91,9 @@ export default function DonationsPage() {
 
   useEffect(() => {
     const fetchRecords = async () => {
-      setIsLoading(true)
       try {
-        const [donationsResponse, payoutsResponse] = await Promise.all([
-          authRequest("/donations"),
-          authRequest("/payouts"),
-        ])
-        const [data, payoutData] = await Promise.all([
-          donationsResponse.json(),
-          payoutsResponse.json(),
-        ])
+        const donationsResponse = await authRequest("/donations")
+        const data = await donationsResponse.json()
         const formatted: EnrichedDonation[] = (Array.isArray(data) ? data : []).map((d: any) => {
           const date = new Date(d.createdAt || d.date || Date.now())
           const provider = String(d.provider || "monnify").toLowerCase()
@@ -164,22 +144,9 @@ export default function DonationsPage() {
             creatorSettlementNetAmount: getCreatorSettlementNetAmount(d),
           }
         })
-        const formattedPayouts: PayoutRecord[] = (Array.isArray(payoutData) ? payoutData : []).map((payout: any) => ({
-          id: payout.id || payout._id || payout.transferReference || crypto.randomUUID(),
-          amount: Number(payout.amount) || 0,
-          status: String(payout.status || "pending").toLowerCase(),
-          bankName: payout.bankName || "",
-          accountNumber: payout.accountNumber || "",
-          createdAt: new Date(payout.createdAt || Date.now()),
-          completedAt: payout.completedAt ? new Date(payout.completedAt) : undefined,
-        }))
-
         setDonations(formatted)
-        setPayouts(formattedPayouts)
       } catch (error) {
         console.error("Failed to fetch donation records:", error)
-      } finally {
-        setIsLoading(false)
       }
     }
 
@@ -234,30 +201,14 @@ export default function DonationsPage() {
       .filter((donation) => donation.date >= dateWindow.start && donation.date < dateWindow.end)
       .map((donation) => ({
         id: `in-${donation.id}`,
-        type: "in",
         name: donation.donorName || "Anonymous",
         amount: donation.creatorSettlementNetAmount,
         date: donation.date,
         status: donation.status,
         reference: donation.transactionReference,
       }))
-    const payoutEntries: TransactionLogEntry[] = payouts
-      .filter((payout) => {
-        const date = payout.completedAt || payout.createdAt
-        return date >= dateWindow.start && date < dateWindow.end
-      })
-      .map((payout) => ({
-        id: `out-${payout.id}`,
-        type: "out",
-        name: payout.bankName
-          ? `${payout.bankName}${payout.accountNumber ? ` - ${payout.accountNumber.slice(-4)}` : ""}`
-          : "Withdrawal",
-        amount: payout.amount,
-        date: payout.completedAt || payout.createdAt,
-        status: payout.status,
-      }))
 
-    return [...donationEntries, ...payoutEntries]
+    return donationEntries
       .filter((entry) => {
         if (!query) return true
         return (
@@ -267,20 +218,10 @@ export default function DonationsPage() {
         )
       })
       .sort((a, b) => b.date.getTime() - a.date.getTime())
-  }, [dateWindow.end, dateWindow.start, donations, payouts, searchQuery])
+  }, [dateWindow.end, dateWindow.start, donations, searchQuery])
 
   const transactionSummary = useMemo(() => {
-    return transactionEntries.reduce(
-      (summary, entry) => {
-        if (entry.type === "in") {
-          summary.in += entry.amount
-        } else if (entry.status === "completed" || entry.status === "success") {
-          summary.out += entry.amount
-        }
-        return summary
-      },
-      { in: 0, out: 0 },
-    )
+    return transactionEntries.reduce((sum, entry) => sum + entry.amount, 0)
   }, [transactionEntries])
 
   const stats = useMemo(() => {
@@ -406,7 +347,7 @@ export default function DonationsPage() {
               <h2 className="text-lg font-semibold">Transaction Log</h2>
             </div>
             <p className="mt-1 text-sm text-zinc-500">
-              Track net money in after StreamTip&apos;s 20% and Monnify&apos;s 1.61% V.A.T, plus completed withdrawals out.
+              Track net money in after StreamTip&apos;s 20% and Monnify&apos;s 1.61-2.02% V.A.T.
             </p>
           </div>
           <div className="flex rounded-xl border border-zinc-800 bg-zinc-900/80 p-1">
@@ -427,7 +368,7 @@ export default function DonationsPage() {
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr] xl:grid-cols-[1fr_1fr_1fr_1fr]">
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr] xl:grid-cols-[1fr_1fr_1fr]">
           {dateMode === "month" ? (
             <Input
               type="month"
@@ -453,11 +394,7 @@ export default function DonationsPage() {
           )}
           <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
             <p className="text-xs text-zinc-500">In</p>
-            <p className="mt-1 text-lg font-black text-emerald-300">{formatCurrency(transactionSummary.in)}</p>
-          </div>
-          <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-3">
-            <p className="text-xs text-zinc-500">Out</p>
-            <p className="mt-1 text-lg font-black text-rose-300">{formatCurrency(transactionSummary.out)}</p>
+            <p className="mt-1 text-lg font-black text-emerald-300">{formatCurrency(transactionSummary)}</p>
           </div>
         </div>
 
@@ -465,8 +402,8 @@ export default function DonationsPage() {
           {transactionEntries.length ? (
             transactionEntries.slice(0, 12).map((entry) => (
               <div key={entry.id} className="flex items-center gap-3 px-4 py-3">
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${entry.type === "in" ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}`}>
-                  {entry.type === "in" ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+                  <ArrowDownLeft className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-white">{entry.name}</p>
@@ -475,8 +412,8 @@ export default function DonationsPage() {
                     <span className="ml-2">{entry.status}</span>
                   </p>
                 </div>
-                <p className={`text-sm font-black ${entry.type === "in" ? "text-emerald-300" : "text-rose-300"}`}>
-                  {entry.type === "in" ? "+" : "-"}{formatCurrency(entry.amount)}
+                <p className="text-sm font-black text-emerald-300">
+                  +{formatCurrency(entry.amount)}
                 </p>
               </div>
             ))
@@ -487,12 +424,6 @@ export default function DonationsPage() {
           )}
         </div>
       </div>
-
-      <DonationTable
-        donations={filteredDonations}
-        isLoading={isLoading}
-        largeDonationThreshold={20000}
-      />
     </div>
   )
 }
