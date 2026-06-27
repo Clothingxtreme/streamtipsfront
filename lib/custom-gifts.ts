@@ -402,7 +402,7 @@ export const giftCatalog: GiftCatalogItem[] = [
     accentStart: "#67e8f9",
     accentMiddle: "#38bdf8",
     accentEnd: "#2563eb",
-    previewLabel: "Whale splash cinematic",
+    previewLabel: "Whale splash scene",
   },
   {
     name: "Dragon Flight",

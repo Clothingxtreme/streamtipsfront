@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion } from "framer-motion"
 import { Crown, Sparkles } from "lucide-react"
-import { CinematicGiftEngine } from "@/components/cinematic-gift-engine"
 import { getGiftForAmount, getGiftPackTheme } from "@/lib/gifts"
 import { sanitizeDonorDisplayName } from "@/lib/donor-display"
 import type { CustomGiftDefinition, GiftAnimationType } from "@/lib/custom-gifts"
@@ -33,9 +32,9 @@ function getPremiumScene(
   animationType?: GiftAnimationType,
 ): PremiumScene | null {
   if (giftName === "Universe" || animationType === "universe-rift") return "universe"
-  if (giftName === "Lion" || animationType === "lion-roar") return "lion"
+  if (giftName === "Lion" || animationType === "lion-roar" || animationType === "thunder-lion") return "lion"
   if (giftName === "Airplane" || animationType === "airplane-flyover") return "airplane"
-  if (animationType === "vip-spotlight") return "vip"
+  if (animationType === "vip-spotlight" || animationType === "royal-carriage") return "vip"
   if (amount > 20000) return "vip"
   return null
 }
@@ -92,6 +91,46 @@ function getAnimationPreset(animationType?: GiftAnimationType) {
       return { edge: "bottom" as const, particle: "halo", label: "Halo Rise", fast: false }
     case "crown-wave":
       return { edge: "top" as const, particle: "crown", label: "Crown Wave", fast: false }
+    case "whale-splash":
+      return { edge: "left" as const, particle: "wave", label: "Whale Splash", fast: false }
+    case "dragon-flight":
+      return { edge: "right" as const, particle: "flame", label: "Dragon Flight", fast: true }
+    case "phoenix-rise":
+      return { edge: "bottom" as const, particle: "flame", label: "Phoenix Rise", fast: true }
+    case "volcano-burst":
+      return { edge: "bottom" as const, particle: "flame", label: "Volcano Burst", fast: true }
+    case "ocean-storm":
+      return { edge: "left" as const, particle: "wave", label: "Ocean Storm", fast: false }
+    case "thunder-lion":
+      return { edge: "top" as const, particle: "thunder", label: "Thunder Lion", fast: true }
+    case "crystal-shatter":
+      return { edge: "right" as const, particle: "shard", label: "Crystal Shatter", fast: true }
+    case "gold-rush":
+      return { edge: "right" as const, particle: "money", label: "Gold Rush", fast: true }
+    case "moon-eclipse":
+      return { edge: "top" as const, particle: "planet", label: "Moon Eclipse", fast: false }
+    case "solar-flare":
+      return { edge: "top" as const, particle: "glow", label: "Solar Flare", fast: true }
+    case "city-lights":
+      return { edge: "left" as const, particle: "laser", label: "City Lights", fast: true }
+    case "cyber-car":
+      return { edge: "left" as const, particle: "comet", label: "Cyber Car", fast: true }
+    case "butterfly-storm":
+      return { edge: "bottom" as const, particle: "petal", label: "Butterfly Storm", fast: false }
+    case "royal-carriage":
+      return { edge: "top" as const, particle: "crown", label: "Royal Carriage", fast: false }
+    case "samurai-slash":
+      return { edge: "left" as const, particle: "laser", label: "Samurai Slash", fast: true }
+    case "dj-stage":
+      return { edge: "left" as const, particle: "disc", label: "DJ Stage", fast: true }
+    case "rainbow-whale":
+      return { edge: "left" as const, particle: "wave", label: "Rainbow Whale", fast: false }
+    case "comet-impact":
+      return { edge: "right" as const, particle: "meteor", label: "Comet Impact", fast: true }
+    case "ice-dragon":
+      return { edge: "right" as const, particle: "shard", label: "Ice Dragon", fast: true }
+    case "mega-fireworks":
+      return { edge: "top" as const, particle: "confetti", label: "Mega Fireworks", fast: true }
     case "rose-bloom":
     default:
       return { edge: "right" as const, particle: "petal", label: "Rose Bloom", fast: false }
@@ -905,17 +944,6 @@ export function DonationAlert({
           transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
           className="pointer-events-none relative flex min-h-[540px] min-w-[540px] items-center justify-center"
         >
-          <CinematicGiftEngine
-            animationType={gift.animationType}
-            giftName={gift.name}
-            amount={amount}
-            comboCount={comboCount}
-            isVisible={isVisible}
-            accentA={accentA}
-            accentB={accentB}
-            accentC={accentC}
-          />
-
           {premiumScene === "lion" ? (
             <LionScene displayName={displayName} amount={amount} comboCount={comboCount} />
           ) : premiumScene === "airplane" ? (
