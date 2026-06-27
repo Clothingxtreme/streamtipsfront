@@ -32,9 +32,9 @@ function getPremiumScene(
   animationType?: GiftAnimationType,
 ): PremiumScene | null {
   if (giftName === "Universe" || animationType === "universe-rift") return "universe"
-  if (giftName === "Lion" || animationType === "lion-roar" || animationType === "thunder-lion") return "lion"
+  if (giftName === "Lion" || animationType === "lion-roar") return "lion"
   if (giftName === "Airplane" || animationType === "airplane-flyover") return "airplane"
-  if (animationType === "vip-spotlight" || animationType === "royal-carriage") return "vip"
+  if (animationType === "vip-spotlight") return "vip"
   if (amount > 20000) return "vip"
   return null
 }
