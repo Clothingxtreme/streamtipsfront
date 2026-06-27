@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion"
 import { Crown, Sparkles } from "lucide-react"
+import { CinematicGiftEngine } from "@/components/cinematic-gift-engine"
 import { getGiftForAmount, getGiftPackTheme } from "@/lib/gifts"
 import { sanitizeDonorDisplayName } from "@/lib/donor-display"
 import type { CustomGiftDefinition, GiftAnimationType } from "@/lib/custom-gifts"
@@ -904,6 +905,17 @@ export function DonationAlert({
           transition={{ duration: 0.72, ease: [0.16, 1, 0.3, 1] }}
           className="pointer-events-none relative flex min-h-[540px] min-w-[540px] items-center justify-center"
         >
+          <CinematicGiftEngine
+            animationType={gift.animationType}
+            giftName={gift.name}
+            amount={amount}
+            comboCount={comboCount}
+            isVisible={isVisible}
+            accentA={accentA}
+            accentB={accentB}
+            accentC={accentC}
+          />
+
           {premiumScene === "lion" ? (
             <LionScene displayName={displayName} amount={amount} comboCount={comboCount} />
           ) : premiumScene === "airplane" ? (
