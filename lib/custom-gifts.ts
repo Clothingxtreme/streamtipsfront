@@ -29,6 +29,26 @@ export type GiftAnimationType =
   | "candy-pop"
   | "halo-rise"
   | "crown-wave"
+  | "whale-splash"
+  | "dragon-flight"
+  | "phoenix-rise"
+  | "volcano-burst"
+  | "ocean-storm"
+  | "thunder-lion"
+  | "crystal-shatter"
+  | "gold-rush"
+  | "moon-eclipse"
+  | "solar-flare"
+  | "city-lights"
+  | "cyber-car"
+  | "butterfly-storm"
+  | "royal-carriage"
+  | "samurai-slash"
+  | "dj-stage"
+  | "rainbow-whale"
+  | "comet-impact"
+  | "ice-dragon"
+  | "mega-fireworks"
 
 export interface CustomGiftDefinition {
   id: string
@@ -91,6 +111,26 @@ export const giftAnimationOptions: Array<{
   { id: "candy-pop", label: "Candy Pop", description: "Playful bright bubble candy colors." },
   { id: "halo-rise", label: "Halo Rise", description: "Elevated halo reveal from below." },
   { id: "crown-wave", label: "Crown Wave", description: "Premium crest-like flowing wave." },
+  { id: "whale-splash", label: "Whale Splash", description: "Whale jump, water trails, splash, and dive." },
+  { id: "dragon-flight", label: "Dragon Flight", description: "Fire-lit flight path with smoke and sparks." },
+  { id: "phoenix-rise", label: "Phoenix Rise", description: "Rising flame burst with glowing finale." },
+  { id: "volcano-burst", label: "Volcano Burst", description: "Lava glow, smoke, and explosive impact." },
+  { id: "ocean-storm", label: "Ocean Storm", description: "Rolling water, splash arcs, and blue lighting." },
+  { id: "thunder-lion", label: "Thunder Lion", description: "Royal roar with electric shockwaves." },
+  { id: "crystal-shatter", label: "Crystal Shatter", description: "Ice crystals breaking into bright shards." },
+  { id: "gold-rush", label: "Gold Rush", description: "Coins, shine, and luxury light sweeps." },
+  { id: "moon-eclipse", label: "Moon Eclipse", description: "Dark cosmic glow with eclipse reveal." },
+  { id: "solar-flare", label: "Solar Flare", description: "Hot flare ring with bright camera flash." },
+  { id: "city-lights", label: "City Lights", description: "Neon skyline energy and stage beams." },
+  { id: "cyber-car", label: "Cyber Car", description: "Fast neon pass with motion streaks." },
+  { id: "butterfly-storm", label: "Butterfly Storm", description: "Elegant flutter particles and soft glow." },
+  { id: "royal-carriage", label: "Royal Carriage", description: "Gold crest entrance with premium halo." },
+  { id: "samurai-slash", label: "Samurai Slash", description: "Sharp slash streaks with impact sparks." },
+  { id: "dj-stage", label: "DJ Stage", description: "Club strobes, lasers, and concert energy." },
+  { id: "rainbow-whale", label: "Rainbow Whale", description: "Whale splash with rainbow water trails." },
+  { id: "comet-impact", label: "Comet Impact", description: "Cosmic strike, flash, and debris ring." },
+  { id: "ice-dragon", label: "Ice Dragon", description: "Cold mist, frost glow, and shard trails." },
+  { id: "mega-fireworks", label: "Mega Fireworks", description: "Full-screen finale bursts and glitter." },
 ]
 
 export const giftCatalog: GiftCatalogItem[] = [
@@ -354,6 +394,186 @@ export const giftCatalog: GiftCatalogItem[] = [
     accentMiddle: "#f59e0b",
     accentEnd: "#f97316",
     previewLabel: "Royal crest wave",
+  },
+  {
+    name: "Whale Splash",
+    icon: "WH",
+    animationType: "whale-splash",
+    accentStart: "#67e8f9",
+    accentMiddle: "#38bdf8",
+    accentEnd: "#2563eb",
+    previewLabel: "Whale splash cinematic",
+  },
+  {
+    name: "Dragon Flight",
+    icon: "DR",
+    animationType: "dragon-flight",
+    accentStart: "#fb7185",
+    accentMiddle: "#f97316",
+    accentEnd: "#facc15",
+    previewLabel: "Dragon fire flyover",
+  },
+  {
+    name: "Phoenix Rise",
+    icon: "PX",
+    animationType: "phoenix-rise",
+    accentStart: "#facc15",
+    accentMiddle: "#fb7185",
+    accentEnd: "#ef4444",
+    previewLabel: "Phoenix flame rise",
+  },
+  {
+    name: "Volcano Burst",
+    icon: "VB",
+    animationType: "volcano-burst",
+    accentStart: "#ef4444",
+    accentMiddle: "#f97316",
+    accentEnd: "#fbbf24",
+    previewLabel: "Lava smoke impact",
+  },
+  {
+    name: "Ocean Storm",
+    icon: "OS",
+    animationType: "ocean-storm",
+    accentStart: "#0ea5e9",
+    accentMiddle: "#14b8a6",
+    accentEnd: "#67e8f9",
+    previewLabel: "Storm water waves",
+  },
+  {
+    name: "Thunder Lion",
+    icon: "TL",
+    animationType: "thunder-lion",
+    accentStart: "#facc15",
+    accentMiddle: "#60a5fa",
+    accentEnd: "#fde68a",
+    previewLabel: "Electric lion roar",
+  },
+  {
+    name: "Crystal Shatter",
+    icon: "CS",
+    animationType: "crystal-shatter",
+    accentStart: "#e0f2fe",
+    accentMiddle: "#38bdf8",
+    accentEnd: "#c4b5fd",
+    previewLabel: "Crystal shard break",
+  },
+  {
+    name: "Gold Rush",
+    icon: "GR",
+    animationType: "gold-rush",
+    accentStart: "#fef3c7",
+    accentMiddle: "#fbbf24",
+    accentEnd: "#d97706",
+    previewLabel: "Gold coin storm",
+  },
+  {
+    name: "Moon Eclipse",
+    icon: "ME",
+    animationType: "moon-eclipse",
+    accentStart: "#c4b5fd",
+    accentMiddle: "#6366f1",
+    accentEnd: "#0f172a",
+    previewLabel: "Eclipse reveal",
+  },
+  {
+    name: "Solar Flare",
+    icon: "SF",
+    animationType: "solar-flare",
+    accentStart: "#fde047",
+    accentMiddle: "#f97316",
+    accentEnd: "#fb7185",
+    previewLabel: "Sun flare flash",
+  },
+  {
+    name: "City Lights",
+    icon: "CL",
+    animationType: "city-lights",
+    accentStart: "#22d3ee",
+    accentMiddle: "#a78bfa",
+    accentEnd: "#f472b6",
+    previewLabel: "Neon city stage",
+  },
+  {
+    name: "Cyber Car",
+    icon: "CC",
+    animationType: "cyber-car",
+    accentStart: "#22d3ee",
+    accentMiddle: "#818cf8",
+    accentEnd: "#fb7185",
+    previewLabel: "Neon speed pass",
+  },
+  {
+    name: "Butterfly Storm",
+    icon: "BS",
+    animationType: "butterfly-storm",
+    accentStart: "#f9a8d4",
+    accentMiddle: "#c084fc",
+    accentEnd: "#7dd3fc",
+    previewLabel: "Butterfly glow storm",
+  },
+  {
+    name: "Royal Carriage",
+    icon: "RC",
+    animationType: "royal-carriage",
+    accentStart: "#fde68a",
+    accentMiddle: "#fbbf24",
+    accentEnd: "#f472b6",
+    previewLabel: "Royal gold entrance",
+  },
+  {
+    name: "Samurai Slash",
+    icon: "SS",
+    animationType: "samurai-slash",
+    accentStart: "#f8fafc",
+    accentMiddle: "#ef4444",
+    accentEnd: "#38bdf8",
+    previewLabel: "Fast slash impact",
+  },
+  {
+    name: "DJ Stage",
+    icon: "DJ",
+    animationType: "dj-stage",
+    accentStart: "#22d3ee",
+    accentMiddle: "#ec4899",
+    accentEnd: "#facc15",
+    previewLabel: "Concert stage flash",
+  },
+  {
+    name: "Rainbow Whale",
+    icon: "RW",
+    animationType: "rainbow-whale",
+    accentStart: "#fb7185",
+    accentMiddle: "#22d3ee",
+    accentEnd: "#a3e635",
+    previewLabel: "Rainbow whale dive",
+  },
+  {
+    name: "Comet Impact",
+    icon: "CI",
+    animationType: "comet-impact",
+    accentStart: "#f97316",
+    accentMiddle: "#818cf8",
+    accentEnd: "#22d3ee",
+    previewLabel: "Comet strike finale",
+  },
+  {
+    name: "Ice Dragon",
+    icon: "ID",
+    animationType: "ice-dragon",
+    accentStart: "#e0f2fe",
+    accentMiddle: "#7dd3fc",
+    accentEnd: "#a78bfa",
+    previewLabel: "Frozen dragon trail",
+  },
+  {
+    name: "Mega Fireworks",
+    icon: "MF",
+    animationType: "mega-fireworks",
+    accentStart: "#facc15",
+    accentMiddle: "#f472b6",
+    accentEnd: "#38bdf8",
+    previewLabel: "Firework finale burst",
   },
 ]
 
