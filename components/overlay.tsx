@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import io from "socket.io-client"
-import { motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import { Crown, Sparkles } from "lucide-react"
 import { DonationAlert } from "./donation-alert"
 import { Leaderboard, type Contributor } from "./leaderboard"
@@ -21,7 +21,7 @@ import {
 } from "@/lib/overlay-state-client"
 import { getPublicDonorDisplayName } from "@/lib/donor-display"
 import { getStreamerPublicAccountName } from "@/lib/account-display"
-import type { OverlayAnchor, OverlayGradientConfig, PositionedOverlayObject } from "@/lib/overlay-customization"
+import type { ComboStyleId, OverlayAnchor, OverlayGradientConfig, PositionedOverlayObject } from "@/lib/overlay-customization"
 import { cn } from "@/lib/utils"
 import type { AppUser } from "@/lib/user"
 
@@ -175,6 +175,19 @@ function overlayGradientStyle(gradient: OverlayGradientConfig) {
   }
 }
 
+type DonationComboState = {
+  count: number
+  expiresAt: number
+  lastAmount: number
+  lastSenderName: string
+  sequence: number
+  status: "idle" | "active" | "ended"
+}
+
+function safeHexColor(value: string | undefined) {
+  return value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : "#00C3F7"
+}
+
 function parseDonationAmount(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value
@@ -257,6 +270,102 @@ function mergeContributor(contributors: Contributor[], incoming: Contributor) {
   return [...contributors, incoming]
 }
 
+function getComboStyleClasses(style: ComboStyleId) {
+  if (style === "flame") {
+    return {
+      shell: "border-amber-200/35 bg-gradient-to-r from-red-500/85 via-amber-400/85 to-yellow-300/85 shadow-[0_0_44px_rgba(245,158,11,0.38)]",
+      label: "text-amber-950/80",
+      value: "text-white",
+      bar: "from-yellow-100 via-orange-200 to-red-200",
+      pulse: "bg-amber-300/30",
+    }
+  }
+
+  if (style === "arcade") {
+    return {
+      shell: "border-fuchsia-200/35 bg-gradient-to-r from-violet-600/90 via-fuchsia-500/90 to-cyan-400/90 shadow-[0_0_44px_rgba(217,70,239,0.34)]",
+      label: "text-white/75",
+      value: "text-white",
+      bar: "from-white via-cyan-100 to-fuchsia-100",
+      pulse: "bg-fuchsia-300/28",
+    }
+  }
+
+  return {
+    shell: "border-cyan-200/35 bg-gradient-to-r from-cyan-500/85 via-sky-400/85 to-fuchsia-500/85 shadow-[0_0_44px_rgba(34,211,238,0.34)]",
+    label: "text-cyan-950/75",
+    value: "text-white",
+    bar: "from-white via-cyan-100 to-fuchsia-100",
+    pulse: "bg-cyan-200/28",
+  }
+}
+
+function DonationComboOverlay({
+  combo,
+  durationSeconds,
+  style,
+}: {
+  combo: DonationComboState
+  durationSeconds: number
+  style: ComboStyleId
+}) {
+  const visible = combo.status === "ended" || (combo.status === "active" && combo.count > 1)
+  const styleClasses = getComboStyleClasses(style)
+
+  return (
+    <AnimatePresence>
+      {visible ? (
+        <motion.div
+          key={`${combo.status}-${combo.sequence}`}
+          initial={{ opacity: 0, y: 24, scale: 0.82 }}
+          animate={{ opacity: 1, y: 0, scale: combo.status === "active" ? [1, 1.06, 1] : 1 }}
+          exit={{ opacity: 0, y: 18, scale: 0.9 }}
+          transition={{ duration: 0.28, ease: "easeOut" }}
+          className="pointer-events-none absolute bottom-8 left-1/2 z-40 w-[min(420px,calc(100vw-32px))] -translate-x-1/2"
+        >
+          <div className={cn("relative overflow-hidden rounded-[26px] border px-5 py-4 backdrop-blur-xl", styleClasses.shell)}>
+            <motion.div
+              className={cn("absolute -left-12 top-1/2 h-24 w-24 -translate-y-1/2 rounded-full blur-2xl", styleClasses.pulse)}
+              animate={{ x: ["0%", "420%", "0%"], opacity: [0.35, 0.85, 0.35] }}
+              transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <div className="relative flex items-center justify-between gap-4">
+              <div>
+                <p className={cn("text-xs font-black uppercase tracking-[0.24em]", styleClasses.label)}>
+                  {combo.status === "ended" ? "Donation Combo Ended" : "Donation Combo"}
+                </p>
+                <p className={cn("mt-1 text-4xl font-black leading-none drop-shadow", styleClasses.value)}>
+                  {combo.status === "ended" ? `x${combo.count}` : `x${combo.count}`}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="max-w-[150px] truncate text-sm font-bold text-white">
+                  {combo.lastSenderName || "Supporter"}
+                </p>
+                <p className="mt-1 text-sm font-black text-white/85">
+                  NGN {Number(combo.lastAmount || 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            {combo.status === "active" ? (
+              <div className="relative mt-3 h-2 overflow-hidden rounded-full bg-black/24">
+                <motion.div
+                  key={`timer-${combo.sequence}`}
+                  className={cn("h-full rounded-full bg-gradient-to-r", styleClasses.bar)}
+                  initial={{ width: "100%" }}
+                  animate={{ width: "0%" }}
+                  transition={{ duration: durationSeconds, ease: "linear" }}
+                />
+              </div>
+            ) : null}
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  )
+}
+
 function manualLeaderboardEntryToContributor(entry: ManualLeaderboardEntry): Contributor | null {
   const name = entry.name.trim()
   const amount = parseDonationAmount(entry.amount)
@@ -305,10 +414,13 @@ export default function Overlay({
   const socketConnectedRef = useRef(false)
   const lastRealtimeEventAtRef = useRef(0)
 
-  const [combo, setCombo] = useState({
-    senderName: "",
+  const [combo, setCombo] = useState<DonationComboState>({
     count: 0,
-    lastTime: 0,
+    expiresAt: 0,
+    lastAmount: 0,
+    lastSenderName: "",
+    sequence: 0,
+    status: "idle" as const,
   })
   const [queue, setQueue] = useState<Donation[]>([])
   const [currentAlert, setCurrentAlert] = useState<AlertDonation | null>(null)
@@ -322,6 +434,7 @@ export default function Overlay({
   const settings = publicState?.settings || storedSettings
   const customization = publicState?.customization || storedCustomization
   const customGifts = publicState?.customGifts || storedCustomGifts
+  const goalColor = safeHexColor(customization.goalColor)
   const showGiftLayer = mode === "full" || mode === "gifts"
   const showGoalLayer = mode === "full" || mode === "goal"
   const showLeaderboardLayer = mode === "full" || mode === "leaderboard"
@@ -329,6 +442,8 @@ export default function Overlay({
   const canPlayGiftAudio = mode === "full" || mode === "gifts"
   const showIdleStage = mode === "full"
   const publicAccountName = getStreamerPublicAccountName(user)
+  const comboDurationSeconds = Math.max(3, Math.min(30, Number(customization.comboDurationSeconds) || 10))
+  const comboDurationMs = comboDurationSeconds * 1000
 
   const topSupporter = useMemo(
     () => [...contributors].sort((a, b) => b.amount - a.amount)[0] || null,
@@ -639,22 +754,23 @@ export default function Overlay({
         })
       }
 
-      const now = Date.now()
-      setCombo((current) => {
-        if (current.senderName === fullDonation.senderName && now - current.lastTime < 5000) {
-          return {
-            senderName: current.senderName,
-            count: current.count + 1,
-            lastTime: now,
-          }
-        }
+      if (customization.showDonationCombo) {
+        const now = Date.now()
+        setCombo((current) => {
+          const isActiveCombo = current.status === "active" && now <= current.expiresAt
 
-        return {
-          senderName: fullDonation.senderName,
-          count: 1,
-          lastTime: now,
-        }
-      })
+          return {
+            count: isActiveCombo ? current.count + 1 : 1,
+            expiresAt: now + comboDurationMs,
+            lastAmount: fullDonation.amount,
+            lastSenderName: fullDonation.senderName,
+            sequence: current.sequence + 1,
+            status: "active",
+          }
+        })
+      } else {
+        setCombo((current) => ({ ...current, count: 0, expiresAt: 0, status: "idle" }))
+      }
 
       if (queueAlert && (settings.animations || forceAlert)) {
         setQueue((current) => {
@@ -666,8 +782,63 @@ export default function Overlay({
         })
       }
     },
-    [canPlayGiftAudio, playGiftSound, settings.animations, settings.sounds],
+    [
+      canPlayGiftAudio,
+      comboDurationMs,
+      customization.showDonationCombo,
+      playGiftSound,
+      settings.animations,
+      settings.sounds,
+    ],
   )
+
+  useEffect(() => {
+    if (!customization.showDonationCombo) {
+      setCombo((current) => ({ ...current, count: 0, expiresAt: 0, status: "idle" }))
+      return
+    }
+
+    if (combo.status !== "active") {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setCombo((current) => {
+        if (current.status !== "active" || current.sequence !== combo.sequence) {
+          return current
+        }
+
+        if (current.count <= 1) {
+          return { ...current, count: 0, expiresAt: 0, status: "idle" }
+        }
+
+        return {
+          ...current,
+          expiresAt: 0,
+          sequence: current.sequence + 1,
+          status: "ended",
+        }
+      })
+    }, Math.max(0, combo.expiresAt - Date.now()))
+
+    return () => window.clearTimeout(timeout)
+  }, [combo.expiresAt, combo.sequence, combo.status, customization.showDonationCombo])
+
+  useEffect(() => {
+    if (combo.status !== "ended") {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setCombo((current) =>
+        current.status === "ended"
+          ? { ...current, count: 0, expiresAt: 0, status: "idle" }
+          : current,
+      )
+    }, 2200)
+
+    return () => window.clearTimeout(timeout)
+  }, [combo.status])
 
   useEffect(() => {
     const socket = io(getSocketUrl(), {
@@ -877,7 +1048,7 @@ export default function Overlay({
         {showGoalLayer && customization.showGoal ? (
           <div
             className={cn(
-              "absolute z-20 w-full max-w-3xl rounded-[28px] border border-white/14 px-5 py-4 shadow-[0_0_40px_rgba(34,211,238,0.08)] backdrop-blur-xl",
+              "absolute z-20 w-[min(720px,calc(100vw-32px))] rounded-[22px] border border-white/14 px-4 py-3 shadow-[0_0_34px_rgba(34,211,238,0.08)] backdrop-blur-xl",
               getAnchorClass(customization.goalPosition.anchor),
             )}
             style={{
@@ -886,14 +1057,14 @@ export default function Overlay({
               ...overlayPositionStyle(customization.goalPosition),
             }}
           >
-            <div className="mb-3 flex items-center justify-between gap-4">
+            <div className="mb-2 flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/65">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/65">
                   Stream Goal
                 </p>
-                <p className="text-lg font-bold text-white">{customization.goalTitle}</p>
+                <p className="text-base font-bold text-white">{customization.goalTitle}</p>
               </div>
-              {customization.showTopSupporter && topSupporter ? (
+              {mode === "full" && customization.showTopSupporter && topSupporter ? (
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/14 bg-black/15 px-4 py-2 text-sm text-white/88">
                   <Crown className="h-4 w-4 text-yellow-300" />
                   <span className="font-semibold">{topSupporter.name}</span>
@@ -906,6 +1077,9 @@ export default function Overlay({
               currentAmount={totalDonations}
               goalAmount={customization.goalAmount}
               title={customization.goalTitle}
+              accentColor={goalColor}
+              compact
+              playCompletionSound={settings.sounds}
             />
           </div>
         ) : null}
@@ -961,6 +1135,14 @@ export default function Overlay({
               <span>{user.virtualAccount.provider || "Paystack"}</span>
             </div>
           </div>
+        ) : null}
+
+        {customization.showDonationCombo ? (
+          <DonationComboOverlay
+            combo={combo}
+            durationSeconds={comboDurationSeconds}
+            style={customization.comboStyle}
+          />
         ) : null}
 
         {showGiftLayer ? (
