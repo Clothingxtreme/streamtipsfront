@@ -94,6 +94,10 @@ function progressValue(item: MilestoneProgress) {
   return `${Number(item.current || 0).toLocaleString()} / ${Number(item.target || 0).toLocaleString()} ${metricLabel(item.metric)}`
 }
 
+function getPublicReferralLink(code: string) {
+  return `https://streamtips.live/register?ref=${encodeURIComponent(String(code || "").trim())}`
+}
+
 export default function CreatorRewardsPage() {
   const [rewards, setRewards] = useState<RewardsPayload | null>(null)
   const [loading, setLoading] = useState(true)
@@ -124,6 +128,10 @@ export default function CreatorRewardsPage() {
   }, [])
 
   const nextRewards = useMemo(() => rewards?.upcomingRewards?.slice(0, 4) || [], [rewards])
+  const referralLink = useMemo(
+    () => getPublicReferralLink(rewards?.referral?.code || ""),
+    [rewards?.referral?.code],
+  )
 
   const copyValue = async (label: string, value: string) => {
     await navigator.clipboard.writeText(value)
@@ -211,8 +219,8 @@ export default function CreatorRewardsPage() {
             </div>
             <div className="rounded-lg bg-black/20 p-4">
               <p className="text-xs text-zinc-500">Referral Link</p>
-              <p className="mt-2 truncate text-sm text-zinc-300">{rewards.referral.link}</p>
-              <Button type="button" className="mt-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white" onClick={() => void copyValue("link", rewards.referral.link)}>
+              <p className="mt-2 truncate text-sm text-zinc-300">{referralLink}</p>
+              <Button type="button" className="mt-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white" onClick={() => void copyValue("link", referralLink)}>
                 <Copy className="mr-2 h-4 w-4" />
                 {copied === "link" ? "Copied" : "Copy link"}
               </Button>
