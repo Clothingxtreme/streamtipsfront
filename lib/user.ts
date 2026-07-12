@@ -78,6 +78,8 @@ export interface AppUser {
   role?: "creator" | "admin"
   status?: "active" | "suspended" | "banned"
   profileImage?: string
+  referralCode?: string
+  referredByCode?: string
   socialProfile?: {
     platform?: string
     handle?: string

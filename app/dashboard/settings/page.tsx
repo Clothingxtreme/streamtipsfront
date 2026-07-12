@@ -1456,6 +1456,16 @@ export default function SettingsPage() {
         onGoalAmountChange={(amount) =>
           updateCustomization("goalAmount", Number.isFinite(amount) ? Math.max(1000, amount) : 1000)
         }
+        onGoalColorChange={(color) => {
+          updateCustomization("goalColor", color)
+          if (/^#[0-9a-fA-F]{6}$/.test(color)) {
+            updateCustomization("goalGradient", {
+              start: color,
+              middle: "#011B33",
+              end: color,
+            })
+          }
+        }}
       />
     </div>
   )

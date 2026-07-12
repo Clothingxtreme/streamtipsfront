@@ -12,6 +12,7 @@ import {
   EyeOff,
   FileCheck2,
   Landmark,
+  Link2,
   LoaderCircle,
   Lock,
   Mail,
@@ -68,6 +69,7 @@ export default function RegisterPage() {
   const [phoneNumber, setPhoneNumber] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [referralCode, setReferralCode] = useState("")
   const [bvn, setBvn] = useState("")
   const [dateOfBirth, setDateOfBirth] = useState("")
   const [firstName, setFirstName] = useState("")
@@ -92,6 +94,14 @@ export default function RegisterPage() {
       router.replace(getPostAuthRedirect(user))
     }
   }, [isAuthenticated, isLoading, router, user])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get("ref") || params.get("referral") || ""
+    if (code) {
+      setReferralCode(code.trim().toUpperCase())
+    }
+  }, [])
 
   useEffect(() => {
     void fetch(`${getApiBaseUrl()}/public/banks`)
@@ -224,6 +234,7 @@ export default function RegisterPage() {
         bankName,
         bankCode,
         accountNumber,
+        referralCode: referralCode.trim().toUpperCase(),
       })
 
       setSuccess(
@@ -325,6 +336,17 @@ export default function RegisterPage() {
                     />
                   </Field>
                 </div>
+
+                <Field label="Referral code (optional)">
+                  <IconInput icon={Link2}>
+                    <Input
+                      value={referralCode}
+                      onChange={(event) => setReferralCode(event.target.value.toUpperCase())}
+                      placeholder="CREATOR123"
+                      className="h-12 border-zinc-800 bg-zinc-900 pl-11 text-white placeholder:text-zinc-600"
+                    />
+                  </IconInput>
+                </Field>
               </>
             ) : null}
 
