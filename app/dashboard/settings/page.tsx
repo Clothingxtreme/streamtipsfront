@@ -1,27 +1,30 @@
 "use client"
 
-import Link from "next/link"
-import { useEffect, useMemo, useState, type ElementType } from "react"
+import { useEffect, useMemo, useState, type ElementType, type ReactNode } from "react"
+import { AnimatePresence, motion } from "framer-motion"
 import {
   AlertTriangle,
   AtSign,
   Bell,
   Building2,
-  CalendarDays,
   Check,
-  CreditCard,
+  Copy,
   Eye,
   EyeOff,
+  Gift,
   ImagePlus,
   KeyRound,
   Landmark,
   Link2,
   LoaderCircle,
   Mail,
+  MonitorPlay,
   Phone,
   RadioTower,
   Save,
+  ShieldCheck,
   Sparkles,
+  Target,
   User,
   Volume2,
   Wallet,
@@ -41,11 +44,14 @@ import { useAppPreferences } from "@/app/context/AppPreferencesContext"
 import { useAuth } from "@/app/context/AuthContext"
 import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
 import { useOverlaySettings } from "@/app/context/OverlaySettingsContext"
-import { OverlayShowcaseSettings } from "@/components/dashboard/overlay-showcase-settings"
 import { HelpTip } from "@/components/help-tip"
 import { giftPackThemes } from "@/lib/gifts"
 import { authRequest } from "@/lib/auth-client"
 import { STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT } from "@/hooks/use-onboarding-tour"
+import { toast } from "@/hooks/use-toast"
+import { notificationSoundOptions, type NotificationSoundId } from "@/lib/app-preferences"
+import { emitNotificationFeedback } from "@/lib/notification-runtime"
+import { getOverlayUrl, type OverlayUrlMode } from "@/lib/runtime-config"
 import { cn } from "@/lib/utils"
 import type { AppPreferences } from "@/lib/app-preferences"
 import type { OverlaySettingId } from "@/lib/overlay-settings"
@@ -94,6 +100,79 @@ type PayoutChangeRequestForm = PayoutProfileForm & {
 }
 
 type SaveState = "idle" | "saving" | "saved" | "error"
+type SettingsTab = "profile" | "payments" | "stream" | "notifications" | "security"
+
+const SETTINGS_TABS: Array<{
+  id: SettingsTab
+  label: string
+  description: string
+  icon: ElementType
+}> = [
+  {
+    id: "profile",
+    label: "Profile",
+    description: "Creator identity and socials.",
+    icon: User,
+  },
+  {
+    id: "payments",
+    label: "Payments",
+    description: "KYC, payout and settlement details.",
+    icon: Wallet,
+  },
+  {
+    id: "stream",
+    label: "Stream",
+    description: "Overlays, alerts and live setup.",
+    icon: MonitorPlay,
+  },
+  {
+    id: "notifications",
+    label: "Notifications",
+    description: "Browser alerts and sounds.",
+    icon: Bell,
+  },
+  {
+    id: "security",
+    label: "Security",
+    description: "Password and account protection.",
+    icon: KeyRound,
+  },
+]
+
+const OVERLAY_URL_CARDS: Array<{
+  mode: OverlayUrlMode
+  title: string
+  description: string
+  settingId?: OverlaySettingId
+  icon: ElementType
+}> = [
+  {
+    mode: "gifts",
+    title: "Donation Animation",
+    description: "Transparent alert overlay for real-time donation effects.",
+    settingId: "animations",
+    icon: Gift,
+  },
+  {
+    mode: "leaderboard",
+    title: "Leaderboard",
+    description: "Top supporter overlay for OBS and TikTok Studio.",
+    icon: RadioTower,
+  },
+  {
+    mode: "goal",
+    title: "Donation Goal",
+    description: "Compact progress bar overlay for creator goals.",
+    icon: Target,
+  },
+  {
+    mode: "account",
+    title: "Account Widget",
+    description: "Virtual account widget viewers can copy during streams.",
+    icon: Wallet,
+  },
+]
 
 const NOTIFICATION_SETTINGS: Array<{
   id: keyof Pick<
@@ -161,21 +240,6 @@ const OVERLAY_SETTINGS: Array<{
     icon: Eye,
   },
 ]
-
-function formatMemberDate(value?: string) {
-  if (!value) return "Not available yet"
-
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return "Not available yet"
-  }
-
-  return new Intl.DateTimeFormat("en-NG", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }).format(date)
-}
 
 function getUserNameParts(user?: AppUser | null) {
   return {
@@ -255,6 +319,14 @@ export default function SettingsPage() {
   const [passwordMessage, setPasswordMessage] = useState("")
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [continuePayoutSetup, setContinuePayoutSetup] = useState(false)
+  const [activeTab, setActiveTab] = useState<SettingsTab>("profile")
+  const [tabScrollPositions, setTabScrollPositions] = useState<Record<SettingsTab, number>>({
+    profile: 0,
+    payments: 0,
+    stream: 0,
+    notifications: 0,
+    security: 0,
+  })
   const kycHelpText =
     "BVN and NIN are verified by Monnify on the backend. We only send them to the backend for account and KYC checks."
 
@@ -403,6 +475,42 @@ export default function SettingsPage() {
     [passwordForm],
   )
 
+  const activeTabMeta = SETTINGS_TABS.find((tab) => tab.id === activeTab) || SETTINGS_TABS[0]
+  const kycStatus = user?.kyc?.status || user?.kycStatus || "incomplete"
+  const creatorTier = user?.kyc?.tier || user?.kycTier || 1
+  const verificationComplete = Boolean(
+    user?.identity?.hasBvn &&
+      user?.identity?.hasNin &&
+      user?.payoutProfile?.locked &&
+      (kycStatus === "verified" || kycStatus === "complete" || user?.identityVerification?.bvn?.status === "verified"),
+  )
+
+  const switchTab = (tab: SettingsTab) => {
+    if (tab === activeTab) return
+
+    setTabScrollPositions((current) => ({
+      ...current,
+      [activeTab]: typeof window === "undefined" ? current[activeTab] : window.scrollY,
+    }))
+    setActiveTab(tab)
+
+    window.setTimeout(() => {
+      window.scrollTo({
+        top: tabScrollPositions[tab] || 0,
+        behavior: "smooth",
+      })
+    }, 20)
+  }
+
+  const copyOverlayUrl = async (mode: OverlayUrlMode, label: string) => {
+    const url = getOverlayUrl(user, mode)
+    await navigator.clipboard.writeText(url)
+    toast({
+      title: "Overlay URL copied",
+      description: `${label} link is ready for OBS or TikTok Studio.`,
+    })
+  }
+
   const handleProfileChange = (field: keyof ProfileForm, value: string) => {
     setProfile((current) => ({
       ...current,
@@ -435,7 +543,7 @@ export default function SettingsPage() {
       return
     }
 
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(profile.dateOfBirth.trim())) {
+    if ((kycForm.bvn || kycForm.nin) && !/^\d{4}-\d{2}-\d{2}$/.test(profile.dateOfBirth.trim())) {
       setSaveState("error")
       setProfileMessage("Date of birth is required in YYYY-MM-DD format for BVN/NIN verification.")
       return
@@ -506,6 +614,10 @@ export default function SettingsPage() {
       setKycForm({ bvn: "", nin: "" })
       setSaveState("saved")
       setProfileMessage("Profile settings saved successfully.")
+      toast({
+        title: "Settings saved",
+        description: "Your creator profile has been updated.",
+      })
       window.setTimeout(() => setSaveState("idle"), 2500)
     } catch (error) {
       setSaveState("error")
@@ -563,6 +675,10 @@ export default function SettingsPage() {
       setPayoutForm({ bankName: "", bankCode: "", accountNumber: "", accountName: "" })
       setPayoutState("saved")
       setPayoutMessage(payload?.warning || "Payout account verified and locked.")
+      toast({
+        title: "Payment settings saved",
+        description: "Your payout account is verified and locked.",
+      })
       window.setTimeout(() => setPayoutState("idle"), 2500)
     } catch (error) {
       setPayoutState("error")
@@ -634,6 +750,10 @@ export default function SettingsPage() {
       })
       setPayoutState("saved")
       setPayoutMessage("Payout account change request submitted for support review.")
+      toast({
+        title: "Request submitted",
+        description: "Support will review your payout account change request.",
+      })
       window.setTimeout(() => setPayoutState("idle"), 2500)
     } catch (error) {
       setPayoutState("error")
@@ -692,6 +812,10 @@ export default function SettingsPage() {
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" })
       setPasswordState("saved")
       setPasswordMessage("Password updated successfully.")
+      toast({
+        title: "Password updated",
+        description: "Your security settings have been saved.",
+      })
       window.setTimeout(() => setPasswordState("idle"), 2500)
     } catch (error) {
       setPasswordState("error")
@@ -705,795 +829,646 @@ export default function SettingsPage() {
     setSaveState("idle")
   }
 
+  const handlePaymentsSave = async () => {
+    const hasKycUpdate = Boolean(kycForm.bvn || kycForm.nin)
+    const hasNewPayout = Boolean(!user?.payoutProfile?.locked && (payoutForm.bankCode || payoutForm.accountNumber))
+    const hasPayoutChange = Boolean(
+      user?.payoutProfile?.locked &&
+        (payoutChangeForm.bankCode ||
+          payoutChangeForm.accountNumber ||
+          payoutChangeForm.supportNote ||
+          payoutChangeForm.proofSummary),
+    )
+
+    if (hasKycUpdate) {
+      await handleProfileSave()
+      return
+    }
+
+    if (hasNewPayout) {
+      await handlePayoutProfileSave()
+      return
+    }
+
+    if (hasPayoutChange) {
+      await handlePayoutChangeRequest()
+      return
+    }
+
+    toast({
+      title: "Payment settings saved",
+      description: "There are no pending payment changes.",
+    })
+  }
+
+  const handleStreamSave = () => {
+    toast({
+      title: "Stream settings saved",
+      description: "Overlay and stream preferences are up to date.",
+    })
+  }
+
+  const handleNotificationSave = () => {
+    toast({
+      title: "Notification settings saved",
+      description: "Your alert preferences are ready.",
+    })
+  }
+
+  const handleTestNotification = async () => {
+    await emitNotificationFeedback("donation", preferences, {
+      title: "StreamTips test notification",
+      body: "Donation alerts are working.",
+      tag: "streamtips-settings-test",
+    })
+    toast({
+      title: "Test notification sent",
+      description: "If browser notifications are allowed, you should see it now.",
+    })
+  }
+
   return (
-    <div data-tour="settings-main" className="mx-auto max-w-6xl space-y-6 p-6 lg:p-8">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-white">Settings</h1>
-          <p className="text-zinc-500">
-            Manage your profile, account access, live notifications, and overlay behavior from one place.
+    <div data-tour="settings-main" className="mx-auto max-w-6xl space-y-8 p-5 pb-12 lg:p-8">
+      <div className="space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-fuchsia-300">Creator Settings</p>
+        <div className="max-w-3xl space-y-2">
+          <h1 className="text-3xl font-bold text-white">Settings</h1>
+          <p className="text-sm leading-6 text-zinc-500 md:text-base">
+            Manage your profile, payment verification, stream overlays, notifications, and account security in one clean workspace.
           </p>
         </div>
-        <Link
-          href="/dashboard/notifications"
-          className="inline-flex h-10 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800"
-        >
-          Open Notifications Page
-        </Link>
       </div>
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80">
-          <div className="border-b border-zinc-800 px-6 py-4">
-            <h2 className="text-lg font-semibold text-white">Profile</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              This information is loaded from your backend user record and saved back there.
-            </p>
-          </div>
+      <div className="sticky top-0 z-30 -mx-5 border-y border-white/10 bg-black/80 px-5 py-3 backdrop-blur-xl lg:static lg:mx-0 lg:rounded-2xl lg:border lg:bg-zinc-950/60 lg:p-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0">
+          {SETTINGS_TABS.map(({ id, label, description, icon: Icon }) => {
+            const selected = activeTab === id
 
-          <div className="space-y-5 p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-zinc-700 bg-zinc-950/70">
-                {profile.profileImage ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.profileImage} alt="Profile" className="h-full w-full object-cover" />
-                ) : (
-                  <User className="h-8 w-8 text-zinc-500" />
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => switchTab(id)}
+                className={cn(
+                  "group flex min-w-[164px] items-center gap-3 rounded-xl px-4 py-3 text-left transition-all lg:min-w-0",
+                  selected
+                    ? "bg-gradient-to-r from-purple-600/90 to-pink-600/90 text-white shadow-lg shadow-fuchsia-950/30"
+                    : "text-zinc-400 hover:bg-white/5 hover:text-white",
                 )}
-              </div>
-              <div className="space-y-2">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-900">
-                  <ImagePlus className="h-4 w-4" />
-                  Upload Profile Photo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(event) => {
-                      void handleProfileImageChange(event.target.files?.[0] || null)
-                    }}
-                  />
-                </label>
-                {profile.profileImage ? (
-                  <button
-                    type="button"
-                    onClick={() => handleProfileChange("profileImage", "")}
-                    className="text-sm text-zinc-500 hover:text-white"
-                  >
-                    Remove current photo
-                  </button>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                  <User className="h-4 w-4 text-zinc-500" />
-                  First Name
-                </label>
-                <Input
-                  value={profile.firstName}
-                  onChange={(event) => handleProfileChange("firstName", event.target.value)}
-                  placeholder="First name"
-                  className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">Middle Name</label>
-                <Input
-                  value={profile.middleName}
-                  onChange={(event) => handleProfileChange("middleName", event.target.value)}
-                  placeholder="Optional"
-                  className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">Last Name</label>
-                <Input
-                  value={profile.lastName}
-                  onChange={(event) => handleProfileChange("lastName", event.target.value)}
-                  placeholder="Last name"
-                  className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                <Mail className="h-4 w-4 text-zinc-500" />
-                Email Address
-              </label>
-              <Input
-                type="email"
-                value={profile.email}
-                onChange={(event) => handleProfileChange("email", event.target.value)}
-                placeholder="you@example.com"
-                className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                <Phone className="h-4 w-4 text-zinc-500" />
-                Phone Number
-              </label>
-              <Input
-                inputMode="tel"
-                value={profile.phoneNumber}
-                onChange={(event) =>
-                  handleProfileChange("phoneNumber", event.target.value.replace(/[^\d+]/g, ""))
-                }
-                placeholder="+2348012345678"
-                className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-              />
-            </div>
-
-            <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 p-4">
-              <div className="flex items-start gap-3">
-                <div className="rounded-xl bg-fuchsia-500/20 p-2.5">
-                  <RadioTower className="h-5 w-5 text-fuchsia-200" />
-                </div>
-                <div>
-                  <p className="font-semibold text-white">Social profile and live page</p>
-                  <p className="mt-1 text-sm leading-6 text-fuchsia-100/75">
-                    Add the account you use for live streams so StreamTip can show it in admin and route support directly to your page.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-300">Main platform</label>
-                  <Select
-                    value={profile.socialPlatform || "tiktok"}
-                    onValueChange={(value) => handleProfileChange("socialPlatform", value)}
-                  >
-                    <SelectTrigger className="border-zinc-700 bg-zinc-950/70 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="border-zinc-800 bg-zinc-900">
-                      {["tiktok", "instagram", "youtube", "x", "twitch", "facebook", "other"].map((platform) => (
-                        <SelectItem
-                          key={platform}
-                          value={platform}
-                          className="text-white focus:bg-zinc-800 focus:text-white"
-                        >
-                          {platform === "x" ? "X / Twitter" : platform.charAt(0).toUpperCase() + platform.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                    <AtSign className="h-4 w-4 text-zinc-500" />
-                    Handle
-                  </label>
-                  <Input
-                    value={profile.socialHandle}
-                    onChange={(event) => handleProfileChange("socialHandle", event.target.value.replace(/^@+/, ""))}
-                    placeholder="creatorhandle"
-                    className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                    <Link2 className="h-4 w-4 text-zinc-500" />
-                    Profile link
-                  </label>
-                  <Input
-                    value={profile.socialProfileUrl}
-                    onChange={(event) => handleProfileChange("socialProfileUrl", event.target.value)}
-                    placeholder="https://www.tiktok.com/@creatorhandle"
-                    className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                    <RadioTower className="h-4 w-4 text-zinc-500" />
-                    Live link
-                  </label>
-                  <Input
-                    value={profile.socialLiveUrl}
-                    onChange={(event) => handleProfileChange("socialLiveUrl", event.target.value)}
-                    placeholder="Optional direct live URL"
-                    className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-                  />
-                </div>
-              </div>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs leading-5 text-fuchsia-100/70">
-                  This saves only through your profile record, so your admin social card updates after refresh.
-                </p>
-                <Button
-                  type="button"
-                  onClick={handleProfileSave}
-                  disabled={saveState === "saving" || !user}
-                  className="bg-gradient-to-r from-fuchsia-500 to-rose-500 text-white hover:opacity-90"
-                >
-                  {saveState === "saving" ? "Saving..." : "Save Socials"}
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                <CalendarDays className="h-4 w-4 text-zinc-500" />
-                Date of Birth
-              </label>
-              <Input
-                type="date"
-                value={profile.dateOfBirth}
-                onChange={(event) => handleProfileChange("dateOfBirth", event.target.value)}
-                className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-              />
-              <p className="text-xs leading-5 text-zinc-500">
-                This must match the date of birth on the submitted BVN/NIN record.
-              </p>
-            </div>
-
-            <div
-              id="bvn-verification"
-              className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 space-y-4 scroll-mt-24"
-            >
-              <div>
-                <p className="text-sm font-medium text-white">Monnify KYC</p>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Add or update BVN/NIN details. The backend verifies them with Monnify before saving.
-                </p>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                    BVN
-                    <HelpTip content={kycHelpText} />
-                  </label>
-                  <Input
-                    inputMode="numeric"
-                    value={kycForm.bvn}
-                    onChange={(event) =>
-                      setKycForm((current) => ({
-                        ...current,
-                        bvn: event.target.value.replace(/\D/g, "").slice(0, 11),
-                      }))
-                    }
-                    placeholder={
-                      user?.identity?.hasBvn
-                        ? `Saved ending in ${user.identity.bvnLast4 || "****"}`
-                        : "Enter 11-digit BVN"
-                    }
-                    className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-                  />
-                  <p className={cn(
-                    "inline-flex rounded-full border px-3 py-1 text-xs",
-                    getVerificationClass(user?.identityVerification?.bvn?.status),
-                  )}>
-                    {getVerificationLabel(user?.identityVerification?.bvn?.status)}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
-                    NIN
-                    <HelpTip content={kycHelpText} />
-                  </label>
-                  <Input
-                    inputMode="numeric"
-                    value={kycForm.nin}
-                    onChange={(event) =>
-                      setKycForm((current) => ({
-                        ...current,
-                        nin: event.target.value.replace(/\D/g, "").slice(0, 11),
-                      }))
-                    }
-                    placeholder={
-                      user?.identity?.hasNin
-                        ? `Saved ending in ${user.identity.ninLast4 || "****"}`
-                        : "Enter 11-digit NIN"
-                    }
-                    className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-                  />
-                  <p className={cn(
-                    "inline-flex rounded-full border px-3 py-1 text-xs",
-                    getVerificationClass(user?.identityVerification?.nin?.status),
-                  )}>
-                    {getVerificationLabel(user?.identityVerification?.nin?.status)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 space-y-4">
-              <div>
-                <p className="text-sm font-medium text-white">Locked Payout Account</p>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Withdrawals can only go to this verified bank account. The account name must
-                  match your first, middle, and last name.
-                </p>
-              </div>
-
-              {continuePayoutSetup && !user?.payoutProfile?.locked ? (
-                <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-                  Add and lock your payout bank account to finish signup.
-                </div>
-              ) : null}
-
-              <div className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100">
-                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" />
-                <p>
-                  Please note: Creator settlements are processed automatically through our payment provider. A payment provider processing/transfer charge may be deducted during settlement before funds reflect in your bank account.
-                </p>
-              </div>
-
-              {user?.payoutProfile?.locked ? (
-                <div className="space-y-4">
-                  <div className="grid gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-100">
-                    <p className="font-medium text-white">{user.payoutProfile.bankName}</p>
-                    <p>{user.payoutProfile.accountName}</p>
-                    <p className="font-mono">**** {String(user.payoutProfile.accountNumber || "").slice(-4)}</p>
-                    <p className="text-xs text-emerald-200/80">
-                      Locked account changes require support review and a 24-72 hour withdrawal cooldown.
-                    </p>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormSelectBank
-                      banks={banks}
-                      value={payoutChangeForm.bankCode}
-                      onChange={(value) => {
-                        const selectedBank = banks.find((bank) => bank.code === value)
-                        setPayoutChangeForm((current) => ({
-                          ...current,
-                          bankCode: value,
-                          bankName: selectedBank?.name || "",
-                          accountName: "",
-                        }))
-                      }}
-                    />
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-300">New account number</label>
-                      <div className="relative">
-                        <Landmark className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-                        <Input
-                          inputMode="numeric"
-                          value={payoutChangeForm.accountNumber}
-                          onChange={(event) =>
-                            setPayoutChangeForm((current) => ({
-                              ...current,
-                              accountNumber: event.target.value.replace(/\D/g, "").slice(0, 10),
-                              accountName: "",
-                            }))
-                          }
-                          className="border-zinc-700 bg-zinc-950/70 pl-11 text-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <ResolvedAccountInput
-                    value={payoutChangeForm.accountName}
-                    loading={resolvingChangeName}
-                  />
-
-                  <Textarea
-                    value={payoutChangeForm.supportNote}
-                    onChange={(event) =>
-                      setPayoutChangeForm((current) => ({ ...current, supportNote: event.target.value }))
-                    }
-                    placeholder="Why do you need to change your payout account?"
-                    className="min-h-24 border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-                  />
-                  <Textarea
-                    value={payoutChangeForm.proofSummary}
-                    onChange={(event) =>
-                      setPayoutChangeForm((current) => ({ ...current, proofSummary: event.target.value }))
-                    }
-                    placeholder="List the proof support should verify, e.g. government ID, NIN slip, bank document."
-                    className="min-h-24 border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
-                  />
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handlePayoutChangeRequest}
-                    disabled={payoutState === "saving"}
-                    className="border-amber-500/30 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20"
-                  >
-                    Request Support Change
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormSelectBank
-                      banks={banks}
-                      value={payoutForm.bankCode}
-                      onChange={(value) => {
-                        const selectedBank = banks.find((bank) => bank.code === value)
-                        setPayoutForm((current) => ({
-                          ...current,
-                          bankCode: value,
-                          bankName: selectedBank?.name || "",
-                          accountName: "",
-                        }))
-                      }}
-                    />
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-300">Account number</label>
-                      <div className="relative">
-                        <Landmark className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-                        <Input
-                          inputMode="numeric"
-                          value={payoutForm.accountNumber}
-                          onChange={(event) =>
-                            setPayoutForm((current) => ({
-                              ...current,
-                              accountNumber: event.target.value.replace(/\D/g, "").slice(0, 10),
-                              accountName: "",
-                            }))
-                          }
-                          className="border-zinc-700 bg-zinc-950/70 pl-11 text-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <ResolvedAccountInput value={payoutForm.accountName} loading={resolvingPayoutName} />
-
-                  <Button
-                    type="button"
-                    onClick={handlePayoutProfileSave}
-                    disabled={payoutState === "saving"}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90"
-                  >
-                    Lock Verified Payout Account
-                  </Button>
-                </div>
-              )}
-
-              {payoutMessage ? (
-                <div
+              >
+                <span
                   className={cn(
-                    "rounded-xl border px-4 py-3 text-sm",
-                    payoutState === "error"
-                      ? "border-rose-500/20 bg-rose-500/10 text-rose-200"
-                      : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                    selected ? "bg-white/15" : "bg-zinc-900 group-hover:bg-zinc-800",
                   )}
                 >
-                  {payoutMessage}
-                </div>
-              ) : null}
-            </div>
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold">{label}</span>
+                  <span className={cn("hidden text-xs lg:block", selected ? "text-white/70" : "text-zinc-500")}>
+                    {description}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
-            {profileMessage ? (
+      <AnimatePresence mode="wait">
+        <motion.section
+          key={activeTab}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="space-y-6"
+        >
+          <div className="flex flex-col gap-2 border-b border-white/10 pb-5">
+            <h2 className="text-2xl font-semibold text-white">{activeTabMeta.label}</h2>
+            <p className="text-sm leading-6 text-zinc-500">{activeTabMeta.description}</p>
+          </div>
+
+          {activeTab === "profile" ? (
+            <div className="space-y-6">
+              <SettingsPanel
+                title="Creator Profile"
+                description="Only the identity and social details creators need to update frequently."
+              >
+                <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                  <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-fuchsia-500/30 bg-zinc-950/80 shadow-lg shadow-fuchsia-950/20">
+                    {profile.profileImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={profile.profileImage} alt="Profile" className="h-full w-full object-cover" />
+                    ) : (
+                      <User className="h-9 w-9 text-zinc-500" />
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/10">
+                      <ImagePlus className="h-4 w-4" />
+                      Upload Profile Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(event) => {
+                          void handleProfileImageChange(event.target.files?.[0] || null)
+                        }}
+                      />
+                    </label>
+                    {profile.profileImage ? (
+                      <button
+                        type="button"
+                        onClick={() => handleProfileChange("profileImage", "")}
+                        className="block text-sm text-zinc-500 transition-colors hover:text-white"
+                      >
+                        Remove current photo
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <Field label="First Name" icon={User}>
+                    <Input value={profile.firstName} onChange={(event) => handleProfileChange("firstName", event.target.value)} placeholder="First name" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                  <Field label="Middle Name">
+                    <Input value={profile.middleName} onChange={(event) => handleProfileChange("middleName", event.target.value)} placeholder="Optional" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                  <Field label="Last Name">
+                    <Input value={profile.lastName} onChange={(event) => handleProfileChange("lastName", event.target.value)} placeholder="Last name" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Email Address" icon={Mail}>
+                    <Input type="email" value={profile.email} onChange={(event) => handleProfileChange("email", event.target.value)} placeholder="you@example.com" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                  <Field label="Phone Number" icon={Phone}>
+                    <Input inputMode="tel" value={profile.phoneNumber} onChange={(event) => handleProfileChange("phoneNumber", event.target.value.replace(/[^\d+]/g, ""))} placeholder="+2348012345678" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Social Platform" icon={RadioTower}>
+                    <Select value={profile.socialPlatform || "tiktok"} onValueChange={(value) => handleProfileChange("socialPlatform", value)}>
+                      <SelectTrigger className="border-zinc-700 bg-zinc-950/70 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-zinc-800 bg-zinc-900">
+                        {["tiktok", "instagram", "youtube", "x", "twitch", "facebook", "other"].map((platform) => (
+                          <SelectItem key={platform} value={platform} className="text-white focus:bg-zinc-800 focus:text-white">
+                            {platform === "x" ? "X / Twitter" : platform.charAt(0).toUpperCase() + platform.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="Social Handle" icon={AtSign}>
+                    <Input value={profile.socialHandle} onChange={(event) => handleProfileChange("socialHandle", event.target.value.replace(/^@+/, ""))} placeholder="creatorhandle" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                  <Field label="Social Media Profile" icon={Link2}>
+                    <Input value={profile.socialProfileUrl} onChange={(event) => handleProfileChange("socialProfileUrl", event.target.value)} placeholder="https://www.tiktok.com/@creatorhandle" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                  <Field label="Live Page Link" icon={RadioTower}>
+                    <Input value={profile.socialLiveUrl} onChange={(event) => handleProfileChange("socialLiveUrl", event.target.value)} placeholder="Optional direct live URL" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                </div>
+
+                {profileMessage ? <FeedbackMessage state={saveState} message={profileMessage} /> : null}
+              </SettingsPanel>
+
+              <TabSaveBar
+                note={isLoadingUser ? "Loading current creator details..." : user ? `Saving as ${user.name}` : "No registered creator was found yet."}
+                disabled={saveState === "saving" || !profileDirty || !user}
+                state={saveState}
+                idleLabel="Save Changes"
+                savingLabel="Saving..."
+                savedLabel="Saved"
+                onSave={handleProfileSave}
+              />
+            </div>
+          ) : null}
+
+          {activeTab === "payments" ? (
+            <div className="space-y-6">
               <div
                 className={cn(
-                  "rounded-xl border px-4 py-3 text-sm",
-                  saveState === "error"
-                    ? "border-rose-500/20 bg-rose-500/10 text-rose-200"
-                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
+                  "rounded-2xl p-5",
+                  verificationComplete
+                    ? "border border-emerald-500/20 bg-emerald-500/10"
+                    : "border border-amber-500/20 bg-amber-500/10",
                 )}
               >
-                {profileMessage}
+                <div className="flex gap-4">
+                  <div className={cn("rounded-xl p-3", verificationComplete ? "bg-emerald-500/20" : "bg-amber-500/20")}>
+                    {verificationComplete ? <ShieldCheck className="h-6 w-6 text-emerald-200" /> : <AlertTriangle className="h-6 w-6 text-amber-200" />}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white">
+                      {verificationComplete ? "Payments are verified" : "Payment verification needs attention"}
+                    </h3>
+                    <p className={cn("mt-1 text-sm leading-6", verificationComplete ? "text-emerald-100/75" : "text-amber-100/75")}>
+                      {verificationComplete
+                        ? "Your KYC and payout account are ready for creator settlements."
+                        : "Complete KYC and lock a payout account so settlements can move smoothly."}
+                    </p>
+                  </div>
+                </div>
               </div>
-            ) : null}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-zinc-500">
-                {isLoadingUser
-                  ? "Loading current account details..."
-                  : user
-                    ? `Current creator record: ${user.name}`
-                    : "No registered creator was found yet. Use the register page first."}
-              </p>
-              <Button
-                onClick={handleProfileSave}
-                disabled={saveState === "saving" || !profileDirty || !user}
-                className={cn(
-                  "min-w-[148px]",
-                  saveState === "saved"
-                    ? "bg-emerald-600 hover:bg-emerald-600"
-                    : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90",
-                )}
-              >
-                {saveState === "saving" ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Saving...
-                  </span>
-                ) : saveState === "saved" ? (
-                  <span className="flex items-center gap-2">
-                    <Check className="h-4 w-4" />
-                    Saved
-                  </span>
+              <SettingsPanel title="Verification Status" description="BVN, NIN, tier, reserved account, and KYC status.">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <StatusPill label="Creator Tier" value={`Tier ${creatorTier}`} />
+                  <StatusPill label="KYC Status" value={String(kycStatus)} />
+                  <StatusPill label="Reserved Account" value={user?.virtualAccount?.accountNumber || "Not generated"} />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Date of Birth for Verification">
+                    <Input type="date" value={profile.dateOfBirth} onChange={(event) => handleProfileChange("dateOfBirth", event.target.value)} className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                  <Field label="BVN" help={kycHelpText}>
+                    <Input inputMode="numeric" value={kycForm.bvn} onChange={(event) => setKycForm((current) => ({ ...current, bvn: event.target.value.replace(/\D/g, "").slice(0, 11) }))} placeholder={user?.identity?.hasBvn ? `Saved ending in ${user.identity.bvnLast4 || "****"}` : "Enter 11-digit BVN"} className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                    <VerificationBadge status={user?.identityVerification?.bvn?.status} />
+                  </Field>
+                  <Field label="NIN" help={kycHelpText}>
+                    <Input inputMode="numeric" value={kycForm.nin} onChange={(event) => setKycForm((current) => ({ ...current, nin: event.target.value.replace(/\D/g, "").slice(0, 11) }))} placeholder={user?.identity?.hasNin ? `Saved ending in ${user.identity.ninLast4 || "****"}` : "Enter 11-digit NIN"} className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                    <VerificationBadge status={user?.identityVerification?.nin?.status} />
+                  </Field>
+                  <StatusPill label="Reserved Bank" value={user?.virtualAccount?.bankName || "Not available"} />
+                </div>
+              </SettingsPanel>
+
+              <SettingsPanel title="Settlement Information" description="Withdrawal account and account change requests.">
+                {continuePayoutSetup && !user?.payoutProfile?.locked ? (
+                  <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+                    Add and lock your payout bank account to finish signup.
+                  </div>
+                ) : null}
+
+                <div className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-200" />
+                  <p>Creator settlements are processed automatically through the payment provider. Provider transfer charges may be deducted before funds reflect in your bank account.</p>
+                </div>
+
+                {user?.payoutProfile?.locked ? (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+                      <p className="font-medium text-white">{user.payoutProfile.bankName}</p>
+                      <p>{user.payoutProfile.accountName}</p>
+                      <p className="font-mono">**** {String(user.payoutProfile.accountNumber || "").slice(-4)}</p>
+                      <p className="mt-2 text-xs text-emerald-200/80">Locked account changes require support review and a 24-72 hour withdrawal cooldown.</p>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormSelectBank banks={banks} value={payoutChangeForm.bankCode} onChange={(value) => {
+                        const selectedBank = banks.find((bank) => bank.code === value)
+                        setPayoutChangeForm((current) => ({ ...current, bankCode: value, bankName: selectedBank?.name || "", accountName: "" }))
+                      }} />
+                      <Field label="New Account Number">
+                        <div className="relative">
+                          <Landmark className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                          <Input inputMode="numeric" value={payoutChangeForm.accountNumber} onChange={(event) => setPayoutChangeForm((current) => ({ ...current, accountNumber: event.target.value.replace(/\D/g, "").slice(0, 10), accountName: "" }))} className="border-zinc-700 bg-zinc-950/70 pl-11 text-white" />
+                        </div>
+                      </Field>
+                    </div>
+                    <ResolvedAccountInput value={payoutChangeForm.accountName} loading={resolvingChangeName} />
+                    <Textarea value={payoutChangeForm.supportNote} onChange={(event) => setPayoutChangeForm((current) => ({ ...current, supportNote: event.target.value }))} placeholder="Why do you need to change your payout account?" className="min-h-24 border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                    <Textarea value={payoutChangeForm.proofSummary} onChange={(event) => setPayoutChangeForm((current) => ({ ...current, proofSummary: event.target.value }))} placeholder="List the proof support should verify, e.g. government ID, NIN slip, bank document." className="min-h-24 border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </div>
                 ) : (
-                  <span className="flex items-center gap-2">
-                    <Save className="h-4 w-4" />
-                    Save Profile
-                  </span>
+                  <div className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormSelectBank banks={banks} value={payoutForm.bankCode} onChange={(value) => {
+                        const selectedBank = banks.find((bank) => bank.code === value)
+                        setPayoutForm((current) => ({ ...current, bankCode: value, bankName: selectedBank?.name || "", accountName: "" }))
+                      }} />
+                      <Field label="Withdrawal Account Number">
+                        <div className="relative">
+                          <Landmark className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                          <Input inputMode="numeric" value={payoutForm.accountNumber} onChange={(event) => setPayoutForm((current) => ({ ...current, accountNumber: event.target.value.replace(/\D/g, "").slice(0, 10), accountName: "" }))} className="border-zinc-700 bg-zinc-950/70 pl-11 text-white" />
+                        </div>
+                      </Field>
+                    </div>
+                    <ResolvedAccountInput value={payoutForm.accountName} loading={resolvingPayoutName} />
+                  </div>
                 )}
-              </Button>
+
+                {payoutMessage ? <FeedbackMessage state={payoutState} message={payoutMessage} /> : null}
+                {profileMessage && saveState === "error" ? <FeedbackMessage state={saveState} message={profileMessage} /> : null}
+              </SettingsPanel>
+
+              <TabSaveBar note="Save KYC updates, payout account setup, or account change requests from here." disabled={payoutState === "saving" || saveState === "saving"} state={payoutState === "saving" ? payoutState : saveState} idleLabel="Save Changes" savingLabel="Saving..." savedLabel="Saved" onSave={handlePaymentsSave} />
             </div>
-          </div>
-        </div>
+          ) : null}
 
-        <div className="space-y-6">
-          <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80">
-            <div className="border-b border-zinc-800 px-6 py-4">
-              <h2 className="text-lg font-semibold text-white">Reset Password</h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                Change your password anytime with your current password for confirmation.
-              </p>
-            </div>
-
-            <div className="space-y-4 p-6">
-              <PasswordInput
-                value={passwordForm.currentPassword}
-                visible={showPasswords.currentPassword}
-                placeholder="Current password"
-                onChange={(value) =>
-                  setPasswordForm((current) => ({ ...current, currentPassword: value }))
-                }
-                onToggleVisibility={() =>
-                  setShowPasswords((current) => ({
-                    ...current,
-                    currentPassword: !current.currentPassword,
-                  }))
-                }
-              />
-              <PasswordInput
-                value={passwordForm.newPassword}
-                visible={showPasswords.newPassword}
-                placeholder="New password"
-                onChange={(value) =>
-                  setPasswordForm((current) => ({ ...current, newPassword: value }))
-                }
-                onToggleVisibility={() =>
-                  setShowPasswords((current) => ({
-                    ...current,
-                    newPassword: !current.newPassword,
-                  }))
-                }
-              />
-              <PasswordInput
-                value={passwordForm.confirmPassword}
-                visible={showPasswords.confirmPassword}
-                placeholder="Confirm new password"
-                onChange={(value) =>
-                  setPasswordForm((current) => ({ ...current, confirmPassword: value }))
-                }
-                onToggleVisibility={() =>
-                  setShowPasswords((current) => ({
-                    ...current,
-                    confirmPassword: !current.confirmPassword,
-                  }))
-                }
-              />
-
-              {passwordMessage ? (
-                <div
-                  className={cn(
-                    "rounded-xl border px-4 py-3 text-sm",
-                    passwordState === "error"
-                      ? "border-rose-500/20 bg-rose-500/10 text-rose-200"
-                      : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
-                  )}
-                >
-                  {passwordMessage}
+          {activeTab === "stream" ? (
+            <div className="space-y-6">
+              <SettingsPanel title="Livestream Setup" description="Everything that appears in OBS, TikTok Studio, or the live overlay.">
+                <div className="grid gap-3 md:grid-cols-2">
+                  {OVERLAY_SETTINGS.map(({ id, label, description, icon: Icon }) => (
+                    <SettingToggle key={id} icon={Icon} label={label} description={description} enabled={overlaySettings[id]} onToggle={(checked) => void updateSetting(id, checked)} />
+                  ))}
                 </div>
-              ) : null}
+              </SettingsPanel>
 
-              <Button
-                onClick={handlePasswordSave}
-                disabled={passwordState === "saving" || !passwordDirty}
-                className={cn(
-                  "w-full",
-                  passwordState === "saved"
-                    ? "bg-emerald-600 hover:bg-emerald-600"
-                    : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90",
-                )}
-              >
-                {passwordState === "saving" ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Updating...
-                  </span>
-                ) : passwordState === "saved" ? (
-                  <span className="flex items-center gap-2">
-                    <Check className="h-4 w-4" />
-                    Updated
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <KeyRound className="h-4 w-4" />
-                    Update Password
-                  </span>
-                )}
-              </Button>
-            </div>
-          </div>
+              <SettingsPanel title="Overlay URLs" description="Copy each lightweight overlay into your streaming software.">
+                <div className="grid gap-4 md:grid-cols-2">
+                  {OVERLAY_URL_CARDS.map(({ mode, title, description, settingId, icon: Icon }) => {
+                    const enabled = settingId ? overlaySettings[settingId] : true
 
-          <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80">
-            <div className="border-b border-zinc-800 px-6 py-4">
-              <h2 className="text-lg font-semibold text-white">Account Overview</h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                Quick reference for the creator account connected to this dashboard.
-              </p>
-            </div>
-
-            <div className="space-y-4 p-6">
-              <SummaryRow label="Creator name" value={user?.name || "Not registered yet"} />
-              <SummaryRow label="Email" value={user?.email || "Not registered yet"} />
-              <SummaryRow label="Phone" value={user?.phoneNumber || "Not saved yet"} />
-              <SummaryRow
-                label="KYC tier"
-                value={`Tier ${user?.kyc?.tier || user?.kycTier || 1} - ${user?.kyc?.status || user?.kycStatus || "incomplete"}`}
-              />
-              {Number(user?.kyc?.nextTier || 0) > 0 ? (
-                <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3">
-                  <p className="text-sm text-cyan-100">
-                    Upgrade available: Tier {user?.kyc?.nextTier}
-                  </p>
-                  <Link href="/dashboard/kyc-upgrade" className="mt-2 inline-flex text-sm font-medium text-cyan-200 underline">
-                    Start tier upgrade
-                  </Link>
+                    return (
+                      <div key={mode} className="rounded-2xl border border-white/10 bg-zinc-950/60 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex gap-3">
+                            <div className="rounded-xl bg-purple-500/15 p-2.5">
+                              <Icon className="h-5 w-5 text-purple-200" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-white">{title}</p>
+                              <p className="mt-1 text-sm leading-5 text-zinc-500">{description}</p>
+                            </div>
+                          </div>
+                          <span className={cn("rounded-full px-2.5 py-1 text-xs", enabled ? "bg-emerald-500/10 text-emerald-200" : "bg-zinc-800 text-zinc-400")}>
+                            {enabled ? "Active" : "Off"}
+                          </span>
+                        </div>
+                        <div className="mt-4 flex gap-2">
+                          <Button type="button" onClick={() => void copyOverlayUrl(mode, title)} className="flex-1 bg-white text-zinc-950 hover:bg-zinc-200">
+                            <Copy className="mr-2 h-4 w-4" />
+                            Copy URL
+                          </Button>
+                          <Button type="button" variant="outline" disabled className="border-zinc-700 bg-zinc-900 text-zinc-400">
+                            Preview
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              ) : (
-                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-                  Highest tier reached (Tier 4). No more upgrades available.
+              </SettingsPanel>
+
+              <SettingsPanel title="Donation Goal Settings" description="Goal overlay customization stays lightweight so it does not cover creators' streams.">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Goal Title">
+                    <Input value={customization.goalTitle} onChange={(event) => updateCustomization("goalTitle", event.target.value)} placeholder="Gaming Chair" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                  <Field label="Goal Amount">
+                    <Input inputMode="numeric" value={String(customization.goalAmount)} onChange={(event) => updateCustomization("goalAmount", Math.max(1000, Number(event.target.value.replace(/\D/g, "")) || 1000))} className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
+                  </Field>
+                  <Field label="Goal Color">
+                    <Input type="color" value={customization.goalColor} onChange={(event) => {
+                      updateCustomization("goalColor", event.target.value)
+                      updateCustomization("goalGradient", { start: event.target.value, middle: "#011B33", end: event.target.value })
+                    }} className="h-11 border-zinc-700 bg-zinc-950/70 p-1 text-white" />
+                  </Field>
+                  <Field label="Gift Animation Style">
+                    <Select value={customization.giftPack} onValueChange={(value) => updateCustomization("giftPack", value)}>
+                      <SelectTrigger className="border-zinc-700 bg-zinc-950/70 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="border-zinc-800 bg-zinc-900">
+                        {giftPackThemes.map((theme) => (
+                          <SelectItem key={theme.id} value={theme.id} className="text-white focus:bg-zinc-800 focus:text-white">
+                            {theme.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
                 </div>
-              )}
-              <SummaryRow
-                label="BVN status"
-                value={
-                  user?.identity?.hasBvn
-                    ? `Saved ending in ${user.identity.bvnLast4 || "****"}`
-                    : "No BVN saved yet"
-                }
-              />
-              <SummaryRow
-                label="NIN status"
-                value={
-                  user?.identity?.hasNin
-                    ? `Saved ending in ${user.identity.ninLast4 || "****"}`
-                    : "No NIN saved yet"
-                }
-              />
-              <SummaryRow
-                label="Virtual account"
-                value={user?.virtualAccount?.accountNumber || "No virtual account yet"}
-              />
-              <SummaryRow
-                label="Bank"
-                value={user?.virtualAccount?.bankName || "Paystack account not created yet"}
-              />
-              <SummaryRow
-                label="Provider"
-                value={user?.virtualAccount?.provider || "Paystack"}
-                icon={CreditCard}
-              />
-              <SummaryRow label="Member since" value={formatMemberDate(user?.createdAt)} />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleRestartGuideTour}
-                className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
-              >
-                Restart Guide Tour
-              </Button>
+              </SettingsPanel>
+
+              <TabSaveBar note="Most stream settings save instantly; this confirms your current setup." disabled={false} state="idle" idleLabel="Save Changes" onSave={handleStreamSave} />
             </div>
-          </div>
-        </div>
-      </section>
+          ) : null}
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80">
-          <div className="border-b border-zinc-800 px-6 py-4">
-            <h2 className="text-lg font-semibold text-white">Notification Settings</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              These update instantly and are shared with the dedicated notifications page.
-            </p>
-          </div>
+          {activeTab === "notifications" ? (
+            <div className="space-y-6">
+              <SettingsPanel title="Notification Preferences" description="Browser notifications, donation alerts, payout alerts, and sounds.">
+                <div className="grid gap-3 md:grid-cols-2">
+                  {NOTIFICATION_SETTINGS.map(({ id, label, description, icon: Icon }) => (
+                    <SettingToggle key={id} icon={Icon} label={label} description={description} enabled={preferences[id]} onToggle={(checked) => void updatePreference(id, checked)} />
+                  ))}
+                </div>
 
-          <div className="space-y-3 p-6">
-            {NOTIFICATION_SETTINGS.map(({ id, label, description, icon: Icon }) => (
-              <SettingToggle
-                key={id}
-                icon={Icon}
-                label={label}
-                description={description}
-                enabled={preferences[id]}
-                onToggle={(checked) => {
-                  void updatePreference(id, checked)
-                }}
-              />
-            ))}
-          </div>
-        </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <SoundSelect label="Browser Sound" value={preferences.desktopSound} onChange={(value) => void updatePreference("desktopSound", value)} />
+                  <SoundSelect label="Donation Sound" value={preferences.donationSound} onChange={(value) => void updatePreference("donationSound", value)} />
+                  <SoundSelect label="Payout Sound" value={preferences.payoutSound} onChange={(value) => void updatePreference("payoutSound", value)} />
+                </div>
 
-        <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/80">
-          <div className="border-b border-zinc-800 px-6 py-4">
-            <h2 className="text-lg font-semibold text-white">Overlay Settings</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              These are the live overlay controls used by the overlay page.
-            </p>
-          </div>
+                <Button type="button" variant="outline" onClick={() => void handleTestNotification()} className="border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-100 hover:bg-fuchsia-500/20">
+                  <Bell className="mr-2 h-4 w-4" />
+                  Test Notification
+                </Button>
+              </SettingsPanel>
 
-          <div className="space-y-3 p-6">
-            {OVERLAY_SETTINGS.map(({ id, label, description, icon: Icon }) => (
-              <SettingToggle
-                key={id}
-                icon={Icon}
-                label={label}
-                description={description}
-                enabled={overlaySettings[id]}
-                onToggle={(checked) => {
-                  void updateSetting(id, checked)
-                }}
-              />
-            ))}
+              <TabSaveBar note="Notification toggles save instantly to this browser." disabled={false} state="idle" idleLabel="Save Changes" onSave={handleNotificationSave} />
+            </div>
+          ) : null}
 
-            <Link
-              href="/dashboard/overlay"
-              className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-900"
-            >
-              Open Overlay Controls
-            </Link>
-          </div>
-        </div>
-      </section>
+          {activeTab === "security" ? (
+            <div className="space-y-6">
+              <SettingsPanel title="Change Password" description="Use your current password to confirm this security change.">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <PasswordInput value={passwordForm.currentPassword} visible={showPasswords.currentPassword} placeholder="Current password" onChange={(value) => setPasswordForm((current) => ({ ...current, currentPassword: value }))} onToggleVisibility={() => setShowPasswords((current) => ({ ...current, currentPassword: !current.currentPassword }))} />
+                  <PasswordInput value={passwordForm.newPassword} visible={showPasswords.newPassword} placeholder="New password" onChange={(value) => setPasswordForm((current) => ({ ...current, newPassword: value }))} onToggleVisibility={() => setShowPasswords((current) => ({ ...current, newPassword: !current.newPassword }))} />
+                  <PasswordInput value={passwordForm.confirmPassword} visible={showPasswords.confirmPassword} placeholder="Confirm new password" onChange={(value) => setPasswordForm((current) => ({ ...current, confirmPassword: value }))} onToggleVisibility={() => setShowPasswords((current) => ({ ...current, confirmPassword: !current.confirmPassword }))} />
+                </div>
+                {passwordMessage ? <FeedbackMessage state={passwordState} message={passwordMessage} /> : null}
+              </SettingsPanel>
 
-      <OverlayShowcaseSettings
-        customization={customization}
-        giftPacks={giftPackThemes}
-        onGiftPackChange={(giftPack) => updateCustomization("giftPack", giftPack)}
-        onGoalTitleChange={(title) => updateCustomization("goalTitle", title)}
-        onGoalAmountChange={(amount) =>
-          updateCustomization("goalAmount", Number.isFinite(amount) ? Math.max(1000, amount) : 1000)
-        }
-        onGoalColorChange={(color) => {
-          updateCustomization("goalColor", color)
-          if (/^#[0-9a-fA-F]{6}$/.test(color)) {
-            updateCustomization("goalGradient", {
-              start: color,
-              middle: "#011B33",
-              end: color,
-            })
-          }
-        }}
-      />
+              <div className="grid gap-4 md:grid-cols-3">
+                <PlaceholderCard title="Two-factor authentication" description="Extra login protection will be available here." />
+                <PlaceholderCard title="Active sessions" description="Review connected devices in a future update." />
+                <PlaceholderCard title="Recent login activity" description="Security history will appear in this space." />
+              </div>
+
+              <SettingsPanel title="Creator Guide" description="Restart the guided product tour whenever a creator needs onboarding again.">
+                <Button type="button" variant="outline" onClick={handleRestartGuideTour} className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900">
+                  Restart Guide Tour
+                </Button>
+                {profileMessage && saveState !== "error" ? <FeedbackMessage state="saved" message={profileMessage} /> : null}
+              </SettingsPanel>
+
+              <TabSaveBar disabled={passwordState === "saving" || !passwordDirty} state={passwordState} idleLabel="Save Changes" savingLabel="Updating..." savedLabel="Updated" onSave={handlePasswordSave} />
+            </div>
+          ) : null}
+        </motion.section>
+      </AnimatePresence>
     </div>
   )
 }
 
-function SummaryRow({
-  label,
-  value,
-  icon: Icon,
+function SettingsPanel({
+  title,
+  description,
+  children,
 }: {
-  label: string
-  value: string
-  icon?: ElementType
+  title: string
+  description: string
+  children: ReactNode
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-      <div className="flex items-center gap-3">
-        {Icon ? (
-          <div className="rounded-lg bg-zinc-800 p-2">
-            <Icon className="h-4 w-4 text-zinc-300" />
-          </div>
-        ) : null}
-        <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">{label}</p>
-          <p className="mt-1 text-sm font-medium text-white">{value}</p>
-        </div>
+    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5 shadow-xl shadow-black/10 md:p-6">
+      <div className="mb-6 space-y-1">
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <p className="text-sm leading-6 text-zinc-500">{description}</p>
+      </div>
+      <div className="space-y-5">{children}</div>
+    </div>
+  )
+}
+
+function Field({
+  label,
+  icon: Icon,
+  help,
+  children,
+}: {
+  label: string
+  icon?: ElementType
+  help?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="space-y-2">
+      <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+        {Icon ? <Icon className="h-4 w-4 text-zinc-500" /> : null}
+        {label}
+        {help ? <HelpTip content={help} /> : null}
+      </label>
+      {children}
+    </div>
+  )
+}
+
+function StatusPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-zinc-950/70 p-4">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">{label}</p>
+      <p className="mt-2 break-words text-sm font-semibold text-white">{value}</p>
+    </div>
+  )
+}
+
+function VerificationBadge({ status }: { status?: string }) {
+  return (
+    <p className={cn("inline-flex rounded-full border px-3 py-1 text-xs", getVerificationClass(status))}>
+      {getVerificationLabel(status)}
+    </p>
+  )
+}
+
+function FeedbackMessage({ state, message }: { state: SaveState; message: string }) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-4 py-3 text-sm",
+        state === "error"
+          ? "border-rose-500/20 bg-rose-500/10 text-rose-200"
+          : "border-emerald-500/20 bg-emerald-500/10 text-emerald-200",
+      )}
+    >
+      {message}
+    </div>
+  )
+}
+
+function TabSaveBar({
+  note,
+  disabled,
+  state,
+  idleLabel,
+  savingLabel = "Saving...",
+  savedLabel = "Saved",
+  onSave,
+}: {
+  note?: string
+  disabled: boolean
+  state: SaveState
+  idleLabel: string
+  savingLabel?: string
+  savedLabel?: string
+  onSave: () => void
+}) {
+  return (
+    <div className="sticky bottom-4 z-20 rounded-2xl border border-white/10 bg-black/80 p-3 shadow-2xl shadow-black/30 backdrop-blur-xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {note ? <p className="text-sm text-zinc-500">{note}</p> : <span />}
+        <Button
+          type="button"
+          onClick={onSave}
+          disabled={disabled}
+          className={cn(
+            "min-w-[156px]",
+            state === "saved"
+              ? "bg-emerald-600 text-white hover:bg-emerald-600"
+              : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:opacity-90",
+          )}
+        >
+          {state === "saving" ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              {savingLabel}
+            </span>
+          ) : state === "saved" ? (
+            <span className="flex items-center gap-2">
+              <Check className="h-4 w-4" />
+              {savedLabel}
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <Save className="h-4 w-4" />
+              {idleLabel}
+            </span>
+          )}
+        </Button>
       </div>
     </div>
+  )
+}
+
+function PlaceholderCard({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-zinc-900/60 p-5">
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-800">
+        <ShieldCheck className="h-5 w-5 text-zinc-400" />
+      </div>
+      <p className="font-semibold text-white">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-zinc-500">{description}</p>
+    </div>
+  )
+}
+
+function SoundSelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: NotificationSoundId
+  onChange: (value: NotificationSoundId) => void
+}) {
+  return (
+    <Field label={label} icon={Volume2}>
+      <Select value={value} onValueChange={(nextValue) => onChange(nextValue as NotificationSoundId)}>
+        <SelectTrigger className="border-zinc-700 bg-zinc-950/70 text-white">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="border-zinc-800 bg-zinc-900">
+          {notificationSoundOptions.map((option) => (
+            <SelectItem key={option.id} value={option.id} className="text-white focus:bg-zinc-800 focus:text-white">
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
   )
 }
 
