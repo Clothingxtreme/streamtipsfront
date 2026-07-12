@@ -106,7 +106,7 @@ const withoutStreamTips = [
   "No donation goals",
   "No leaderboard",
   "No analytics",
-  "No creator rewards",
+  "No referral tracking",
 ]
 
 const withStreamTips = [
@@ -115,7 +115,7 @@ const withStreamTips = [
   "Donation goals",
   "Live leaderboards",
   "Creator insights",
-  "Rewards system",
+  "Referral tracking",
 ]
 
 const faqs = [
@@ -141,7 +141,7 @@ const faqs = [
   },
   {
     question: "How much is the platform fee?",
-    answer: "Creators start at a 20% platform fee and can reduce it temporarily through creator rewards, down to as low as 15%.",
+    answer: "StreamTips uses a fixed 20% platform fee for creators.",
   },
 ]
 
@@ -339,7 +339,7 @@ export default function HomePage() {
           <nav className="hidden items-center gap-7 text-sm text-white/66 lg:flex">
             <a href="#how" className="transition-colors hover:text-white">How it works</a>
             <a href="#insights" className="transition-colors hover:text-white">Insights</a>
-            <a href="#rewards" className="transition-colors hover:text-white">Rewards</a>
+            <a href="#referrals" className="transition-colors hover:text-white">Referrals</a>
             <a href="#faq" className="transition-colors hover:text-white">FAQ</a>
           </nav>
 
@@ -559,14 +559,14 @@ export default function HomePage() {
           </motion.div>
         </section>
 
-        <section id="rewards" className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-24 sm:px-6 lg:grid-cols-[1fr_1fr]">
+        <section id="referrals" className="mx-auto grid max-w-7xl items-center gap-10 px-5 py-24 sm:px-6 lg:grid-cols-[1fr_1fr]">
           <motion.div {...reveal} className="rounded-2xl border border-white/10 bg-white/[0.055] p-7 backdrop-blur-xl">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-fuchsia-200/80">
-                  Creator Rewards
+                  Creator Referrals
                 </p>
-                <h2 className="mt-4 text-4xl font-black">Reduce Your Platform Fee.</h2>
+                <h2 className="mt-4 text-4xl font-black">Track The Creators You Bring In.</h2>
               </div>
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500">
                 <Trophy className="h-7 w-7 text-white" />
@@ -574,40 +574,40 @@ export default function HomePage() {
             </div>
 
             <p className="mt-5 text-base leading-8 text-white/62">
-              Every creator starts at a 20% platform fee. Complete milestones and bring active creators into the platform to temporarily reduce your fee to as low as 15%.
+              Every creator stays on the standard 20% platform fee. Referral links remain available so you can track creator signups and keep the data ready for future programs.
             </p>
 
             <div className="mt-8 rounded-2xl bg-black/24 p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-white/55">Current Fee</p>
+                  <p className="text-sm text-white/55">Platform Fee</p>
                   <p className="mt-1 text-5xl font-black">20%</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-white/55">Next Reward</p>
-                  <p className="mt-1 text-5xl font-black text-fuchsia-200">19%</p>
+                  <p className="text-sm text-white/55">Referral Tracking</p>
+                  <p className="mt-1 text-5xl font-black text-fuchsia-200">On</p>
                 </div>
               </div>
               <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/10">
                 <motion.div
                   className="h-full rounded-full bg-gradient-to-r from-purple-400 via-fuchsia-400 to-pink-400"
                   initial={{ width: "0%" }}
-                  whileInView={{ width: "65%" }}
+                  whileInView={{ width: "100%" }}
                   viewport={{ once: true }}
                   transition={{ duration: 1 }}
                 />
               </div>
               <div className="mt-3 flex items-center justify-between text-sm text-white/55">
-                <span>Milestone progress</span>
-                <span className="font-bold text-white">65%</span>
+                <span>Referral links</span>
+                <span className="font-bold text-white">Available</span>
               </div>
             </div>
           </motion.div>
 
           <SectionIntro
-            eyebrow="Achievement System"
-            title="Make growth feel like progress."
-            body="Rewards are designed to make creators feel their activity is building toward something useful: lower fees, stronger momentum and better earning power."
+            eyebrow="Referral Data"
+            title="Keep track of who joins through you."
+            body="Creators can share their referral link and view referred accounts later without changing payment splits or platform fee logic."
             align="left"
           />
         </section>

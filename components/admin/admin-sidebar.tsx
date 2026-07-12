@@ -14,7 +14,6 @@ import {
   ScrollText,
   ShieldCheck,
   Sparkles,
-  Trophy,
   Users,
 } from "lucide-react"
 import { useAdminAuth } from "@/app/context/AdminAuthContext"
@@ -23,7 +22,6 @@ import { cn } from "@/lib/utils"
 const navItems = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Platform Revenue", href: "/admin/platform-revenue", icon: ChartNoAxesColumn },
-  { label: "Creator Rewards", href: "/admin/rewards", icon: Trophy },
   { label: "Send Animation", href: "/admin/send-animation", icon: Sparkles },
   { label: "Manage Users", href: "/admin/users", icon: Users },
   { label: "Creator Socials", href: "/admin/socials", icon: RadioTower },
