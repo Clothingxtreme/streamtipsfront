@@ -17,7 +17,6 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useDonations } from "@/app/context/DonationsContext"
 import { useAuth } from "@/app/context/AuthContext"
-import { authRequest } from "@/lib/auth-client"
 import { useOverlaySettings } from "@/app/context/OverlaySettingsContext"
 import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
 import { DonationsTable } from "@/components/dashboard/donations-table"
@@ -37,7 +36,6 @@ const formatCurrency = (num: number) => {
   return "NGN " + num.toLocaleString()
 }
 
-const defaultPlatformFeePercent = 20
 const maxTier = 4
 
 type SessionDonation = {
@@ -265,25 +263,7 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const { settings: overlaySettings } = useOverlaySettings()
   const { customization } = useOverlayCustomization()
-  const [platformFeePercent, setPlatformFeePercent] = useState(defaultPlatformFeePercent)
   const [previousDashboardVisitAt, setPreviousDashboardVisitAt] = useState("")
-
-  useEffect(() => {
-    let cancelled = false
-
-    void authRequest("/rewards")
-      .then((response) => response.json())
-      .then((payload) => {
-        if (cancelled) return
-        const fee = Number(payload?.rewards?.currentPlatformFeePercent)
-        setPlatformFeePercent(Number.isFinite(fee) && fee > 0 ? fee : defaultPlatformFeePercent)
-      })
-      .catch(() => undefined)
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   useEffect(() => {
     if (!user?.id || typeof window === "undefined") return
@@ -323,7 +303,6 @@ export default function DashboardPage() {
   const streamReadyScore = Math.round((completedStreamReadyItems / streamReadyItems.length) * 100)
   const tier = Math.min(maxTier, Math.max(1, Number(user?.kyc?.tier || user?.kycTier || 1)))
   const tierProgress = Math.round((tier / maxTier) * 100)
-  const creatorShare = Math.round(totalEarnings * ((100 - platformFeePercent) / 100))
   const sessionReview = useMemo(() => {
     const previousVisitTime = previousDashboardVisitAt ? new Date(previousDashboardVisitAt).getTime() : 0
     const hasValidPreviousVisit = Boolean(previousVisitTime && !Number.isNaN(previousVisitTime))
@@ -435,27 +414,27 @@ export default function DashboardPage() {
         </div>
 
         <div className="rounded-xl bg-gradient-to-br from-purple-500/15 via-zinc-900/80 to-pink-500/10 p-5 sm:p-6">
-          <SectionLabel>2. Current Platform Fee & Rewards Progress</SectionLabel>
+          <SectionLabel>2. Account Tier</SectionLabel>
           <div className="mt-5 flex items-end justify-between gap-4">
             <div>
-              <p className="text-sm text-zinc-400">Current platform fee</p>
-              <p className="mt-1 text-5xl font-black text-white">{platformFeePercent}%</p>
+              <p className="text-sm text-zinc-400">Current creator tier</p>
+              <p className="mt-1 text-5xl font-black text-white">Tier {tier}</p>
             </div>
             <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-300">
-              You keep {100 - platformFeePercent}%
+              {tier} of {maxTier}
             </div>
           </div>
 
           <div className="mt-6">
             <div className="rounded-lg bg-black/20 p-4">
-              <p className="text-xs text-zinc-500">Creator share tracked</p>
-              <p className="mt-2 text-xl font-bold text-white">{formatCurrency(creatorShare)}</p>
+              <p className="text-xs text-zinc-500">Total received tracked</p>
+              <p className="mt-2 text-xl font-bold text-white">{formatCurrency(totalEarnings)}</p>
             </div>
           </div>
 
           <div className="mt-6">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-400">Rewards tier progress</span>
+              <span className="text-zinc-400">Tier progress</span>
               <span className="font-semibold text-white">Tier {tier} of {maxTier}</span>
             </div>
             <div className="mt-3 h-2 rounded-full bg-zinc-800">
