@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input"
 import type { OverlayCustomization, OverlayGradientConfig } from "@/lib/overlay-customization"
 
 type FeatureToggleKey =
-  | "showGoal"
   | "showLeaderboard"
   | "showTopSupporter"
   | "showAmbientScene"
@@ -17,11 +16,6 @@ const featureToggles: Array<{
   label: string
   description: string
 }> = [
-  {
-    key: "showGoal",
-    label: "Show Live Goal",
-    description: "Keep the goal block visible on the overlay.",
-  },
   {
     key: "showLeaderboard",
     label: "Show Leaderboard",

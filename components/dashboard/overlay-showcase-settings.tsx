@@ -14,6 +14,7 @@ interface OverlayShowcaseSettingsProps {
   giftPacks: GiftPackTheme[]
   onGoalTitleChange: (value: string) => void
   onGoalAmountChange: (value: number) => void
+  onGoalColorChange?: (value: string) => void
   onGiftPackChange: (giftPackId: OverlayCustomization["giftPack"]) => void
   saveState?: "idle" | "saving" | "saved"
   onSave?: () => void
@@ -23,6 +24,7 @@ interface OverlayShowcaseSettingsProps {
 const quickOverlayLinks: Array<{ mode: OverlayUrlMode; label: string }> = [
   { mode: "gifts", label: "Live Donation Animation" },
   { mode: "leaderboard", label: "Leaderboard" },
+  { mode: "goal", label: "Donation Goal" },
   { mode: "account", label: "Account" },
 ]
 
@@ -31,6 +33,7 @@ export function OverlayShowcaseSettings({
   giftPacks,
   onGoalTitleChange,
   onGoalAmountChange,
+  onGoalColorChange,
   onGiftPackChange,
   saveState = "idle",
   onSave,
@@ -88,7 +91,7 @@ export function OverlayShowcaseSettings({
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr_0.6fr]">
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-medium text-zinc-300">
               <Target className="h-4 w-4 text-zinc-500" />
@@ -112,6 +115,19 @@ export function OverlayShowcaseSettings({
               onChange={(event) => onGoalAmountChange(Number(event.target.value))}
               className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-zinc-300">Goal Color</label>
+            <div className="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-950/70 px-3 py-2">
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(customization.goalColor) ? customization.goalColor : "#00C3F7"}
+                onChange={(event) => onGoalColorChange?.(event.target.value)}
+                className="h-9 w-10 rounded border-none bg-transparent"
+              />
+              <span className="truncate text-sm font-medium text-white">{customization.goalColor}</span>
+            </div>
           </div>
         </div>
 

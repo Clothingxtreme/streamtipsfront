@@ -31,6 +31,11 @@ const overlayLinks: Array<{
     description: "Top gifters panel without the donation goal block.",
   },
   {
+    mode: "goal",
+    label: "Donation Goal",
+    description: "Compact goal progress bar for a dedicated browser source.",
+  },
+  {
     mode: "account",
     label: "Donation Account",
     description: "Virtual account details for viewers.",

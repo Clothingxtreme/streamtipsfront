@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { 
   LayoutDashboard, 
+  BarChart3,
   Wallet, 
   History, 
   Settings, 
@@ -11,6 +12,7 @@ import {
   ShieldCheck,
   Sparkles,
   Swords,
+  Trophy,
   Wand2,
   LogOut,
   Menu,
@@ -34,10 +36,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, tourKey: "dashboard" },
+  { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3, tourKey: "analytics" },
   { label: "Donations", href: "/dashboard/donations", icon: History, tourKey: "donations" },
   { label: "Earnings", href: "/dashboard/earnings", icon: Wallet, tourKey: "earnings" },
   { label: "Virtual Account", href: "/dashboard/account", icon: CreditCard, tourKey: "virtual-account" },
   { label: "Live Battle", href: "/dashboard/live-battle", icon: Swords, tourKey: "live-battle" },
+  { label: "Creator Rewards", href: "/dashboard/rewards", icon: Trophy, tourKey: "creator-rewards" },
   { label: "Overlay Settings", href: "/dashboard/overlay", icon: Sparkles, tourKey: "overlay-settings" },
   { label: "Create Custom Gift", href: "/dashboard/custom-gifts", icon: Wand2, tourKey: "custom-gift" },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell, tourKey: "notifications" },
