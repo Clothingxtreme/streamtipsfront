@@ -324,7 +324,6 @@ export default function DashboardPage() {
   const tier = Math.min(maxTier, Math.max(1, Number(user?.kyc?.tier || user?.kycTier || 1)))
   const tierProgress = Math.round((tier / maxTier) * 100)
   const creatorShare = Math.round(totalEarnings * ((100 - platformFeePercent) / 100))
-  const platformFee = Math.round(totalEarnings * (platformFeePercent / 100))
   const sessionReview = useMemo(() => {
     const previousVisitTime = previousDashboardVisitAt ? new Date(previousDashboardVisitAt).getTime() : 0
     const hasValidPreviousVisit = Boolean(previousVisitTime && !Number.isNaN(previousVisitTime))
@@ -447,14 +446,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="mt-6">
             <div className="rounded-lg bg-black/20 p-4">
               <p className="text-xs text-zinc-500">Creator share tracked</p>
               <p className="mt-2 text-xl font-bold text-white">{formatCurrency(creatorShare)}</p>
-            </div>
-            <div className="rounded-lg bg-black/20 p-4">
-              <p className="text-xs text-zinc-500">Platform fee tracked</p>
-              <p className="mt-2 text-xl font-bold text-white">{formatCurrency(platformFee)}</p>
             </div>
           </div>
 
