@@ -25,6 +25,8 @@ import {
   XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { VideoGuideButton } from "@/components/dashboard/video-guide-card"
+import { setupTutorialGuide } from "@/lib/video-guides"
 import { cn } from "@/lib/utils"
 
 const reveal = {
@@ -386,15 +388,9 @@ export default function HomePage() {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Link href="/overlay">
-                <Button
-                  variant="outline"
-                  className="h-[52px] rounded-full border-white/14 bg-white/[0.055] px-7 text-base font-bold text-white backdrop-blur-xl hover:bg-white/10"
-                >
-                  <Play className="h-4 w-4" />
-                  Watch Live Demo
-                </Button>
-              </Link>
+              <VideoGuideButton guide={setupTutorialGuide}>
+                Watch Setup Video
+              </VideoGuideButton>
             </div>
           </motion.div>
 

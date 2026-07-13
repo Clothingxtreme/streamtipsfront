@@ -21,6 +21,8 @@ import { useOverlaySettings } from "@/app/context/OverlaySettingsContext"
 import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
 import { DonationsTable } from "@/components/dashboard/donations-table"
 import { VirtualAccountCard } from "@/components/dashboard/virtual-account-card"
+import { VideoGuideCard } from "@/components/dashboard/video-guide-card"
+import { earnMoreGuide, setupTutorialGuide } from "@/lib/video-guides"
 import { cn } from "@/lib/utils"
 
 const fallbackVirtualAccount = {
@@ -364,6 +366,20 @@ export default function DashboardPage() {
       </div>
 
       <SessionReviewCard review={sessionReview} />
+
+      <section className="rounded-xl bg-zinc-900/70 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.14)] sm:p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <SectionLabel>Learn StreamTips</SectionLabel>
+            <h2 className="mt-2 text-2xl font-bold text-white">Start faster, earn smarter</h2>
+          </div>
+          <p className="text-sm text-zinc-500">Two short videos for setup and donation growth.</p>
+        </div>
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          <VideoGuideCard guide={setupTutorialGuide} compact />
+          <VideoGuideCard guide={earnMoreGuide} compact />
+        </div>
+      </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.35fr_0.9fr]">
         <div className="rounded-xl bg-zinc-900/70 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.18)] sm:p-6">
