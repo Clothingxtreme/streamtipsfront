@@ -3,8 +3,10 @@
 import { useState } from "react"
 import { ObsConnectCard } from "@/components/dashboard/obs-connect-card"
 import { OverlaySceneEditor } from "@/components/dashboard/overlay-scene-editor"
+import { VideoGuideCard } from "@/components/dashboard/video-guide-card"
 import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
 import { saveOverlayState } from "@/lib/overlay-state-client"
+import { setupTutorialGuide } from "@/lib/video-guides"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -72,6 +74,19 @@ export default function OverlaySettingsPage() {
           Control alert animations, sounds, desktop notifications, and preview mode across your dashboard and overlay tabs.
         </p>
       </div>
+
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
+        <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Setup tutorial</p>
+            <h2 className="mt-2 text-lg font-semibold text-white">Need help connecting your overlay?</h2>
+            <p className="mt-1 text-sm leading-6 text-zinc-500">
+              Watch the quick setup video before copying your links into OBS or TikTok Studio.
+            </p>
+          </div>
+          <VideoGuideCard guide={setupTutorialGuide} compact />
+        </div>
+      </section>
 
       <section className="flex flex-col gap-5 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
