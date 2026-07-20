@@ -17,7 +17,6 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { useDonations } from "@/app/context/DonationsContext"
 import { useAuth } from "@/app/context/AuthContext"
-import { authRequest } from "@/lib/auth-client"
 import { useOverlaySettings } from "@/app/context/OverlaySettingsContext"
 import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
 import { DonationsTable } from "@/components/dashboard/donations-table"
@@ -37,7 +36,6 @@ const formatCurrency = (num: number) => {
   return "NGN " + num.toLocaleString()
 }
 
-const defaultPlatformFeePercent = 20
 const maxTier = 4
 
 type SessionDonation = {
@@ -189,21 +187,33 @@ function SessionReviewCard({
     averageDonation: number
     dateRange: string
     hasPreviousVisit: boolean
+    mode: "since_last_visit" | "recent_activity" | "all_activity"
   }
 }) {
-  const insightPrefix = review.hasPreviousVisit ? "since your last visit" : "in your tracked history"
+  const insightPrefix =
+    review.mode === "since_last_visit"
+      ? "since your last visit"
+      : review.mode === "recent_activity"
+        ? "from recent activity"
+        : "in your tracked history"
+  const title =
+    review.mode === "since_last_visit"
+      ? "Since your previous dashboard visit"
+      : review.mode === "recent_activity"
+        ? "Recent donation activity"
+        : "Donation activity reference"
   const highestDonationText = review.highestDonation
     ? `Your highest donation was ${formatCurrency(review.highestDonation.amount)}.`
-    : "Your highest donation will appear after new activity."
+    : "Your highest donation will appear after donation activity."
 
   return (
     <section className="rounded-xl bg-zinc-900/70 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.16)] sm:p-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <SectionLabel>Session Review</SectionLabel>
-          <h2 className="mt-2 text-2xl font-bold text-white">Since your previous dashboard visit</h2>
+          <h2 className="mt-2 text-2xl font-bold text-white">{title}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-            Based only on dashboard activity windows, not livestream start or end detection.
+            Based on donation activity snapshots, not livestream start or end detection.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 text-sm text-zinc-300">
@@ -265,25 +275,7 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const { settings: overlaySettings } = useOverlaySettings()
   const { customization } = useOverlayCustomization()
-  const [platformFeePercent, setPlatformFeePercent] = useState(defaultPlatformFeePercent)
   const [previousDashboardVisitAt, setPreviousDashboardVisitAt] = useState("")
-
-  useEffect(() => {
-    let cancelled = false
-
-    void authRequest("/rewards")
-      .then((response) => response.json())
-      .then((payload) => {
-        if (cancelled) return
-        const fee = Number(payload?.rewards?.currentPlatformFeePercent)
-        setPlatformFeePercent(Number.isFinite(fee) && fee > 0 ? fee : defaultPlatformFeePercent)
-      })
-      .catch(() => undefined)
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   useEffect(() => {
     if (!user?.id || typeof window === "undefined") return
@@ -323,16 +315,32 @@ export default function DashboardPage() {
   const streamReadyScore = Math.round((completedStreamReadyItems / streamReadyItems.length) * 100)
   const tier = Math.min(maxTier, Math.max(1, Number(user?.kyc?.tier || user?.kycTier || 1)))
   const tierProgress = Math.round((tier / maxTier) * 100)
-  const creatorShare = Math.round(totalEarnings * ((100 - platformFeePercent) / 100))
   const sessionReview = useMemo(() => {
     const previousVisitTime = previousDashboardVisitAt ? new Date(previousDashboardVisitAt).getTime() : 0
     const hasValidPreviousVisit = Boolean(previousVisitTime && !Number.isNaN(previousVisitTime))
-    const reviewDonations = donations
+    const visibleDonations = donations
       .filter(isReviewDonationVisible)
+      .sort((left, right) => getDonationDate(right).getTime() - getDonationDate(left).getTime())
+    const donationsSinceVisit = visibleDonations
       .filter((donation) => {
         if (!hasValidPreviousVisit) return true
         return getDonationDate(donation).getTime() > previousVisitTime
       })
+    const latestDonationTime = visibleDonations[0] ? getDonationDate(visibleDonations[0]).getTime() : 0
+    const recentWindowStart = latestDonationTime ? latestDonationTime - 24 * 60 * 60 * 1000 : 0
+    const recentDonations = recentWindowStart
+      ? visibleDonations.filter((donation) => getDonationDate(donation).getTime() >= recentWindowStart)
+      : []
+    const reviewDonations = donationsSinceVisit.length
+      ? donationsSinceVisit
+      : recentDonations.length
+        ? recentDonations
+        : visibleDonations
+    const mode = donationsSinceVisit.length
+      ? "since_last_visit"
+      : recentDonations.length
+        ? "recent_activity"
+        : "all_activity"
 
     const moneyReceived = reviewDonations.reduce((sum, donation) => sum + Number(donation.amount || 0), 0)
     const highestDonation = reviewDonations.reduce<{ amount: number; name: string } | null>(
@@ -359,9 +367,11 @@ export default function DashboardPage() {
     const topSupporter =
       Array.from(supporterStats.values()).sort((a, b) => b.amount - a.amount || b.count - a.count)[0] || null
     const averageDonation = reviewDonations.length ? Math.round(moneyReceived / reviewDonations.length) : 0
-    const dateRange = hasValidPreviousVisit
+    const dateRange = mode === "since_last_visit"
       ? `${formatSessionDate(previousDashboardVisitAt)} - now`
-      : "All tracked dashboard activity"
+      : mode === "recent_activity" && latestDonationTime
+        ? `Recent activity ending ${formatSessionDate(new Date(latestDonationTime).toISOString())}`
+        : "All tracked dashboard activity"
 
     return {
       moneyReceived,
@@ -370,7 +380,8 @@ export default function DashboardPage() {
       topSupporter,
       averageDonation,
       dateRange,
-      hasPreviousVisit: hasValidPreviousVisit,
+      hasPreviousVisit: mode === "since_last_visit" && hasValidPreviousVisit,
+      mode,
     }
   }, [donations, previousDashboardVisitAt])
 
@@ -435,27 +446,27 @@ export default function DashboardPage() {
         </div>
 
         <div className="rounded-xl bg-gradient-to-br from-purple-500/15 via-zinc-900/80 to-pink-500/10 p-5 sm:p-6">
-          <SectionLabel>2. Current Platform Fee & Rewards Progress</SectionLabel>
+          <SectionLabel>2. Account Tier</SectionLabel>
           <div className="mt-5 flex items-end justify-between gap-4">
             <div>
-              <p className="text-sm text-zinc-400">Current platform fee</p>
-              <p className="mt-1 text-5xl font-black text-white">{platformFeePercent}%</p>
+              <p className="text-sm text-zinc-400">Current creator tier</p>
+              <p className="mt-1 text-5xl font-black text-white">Tier {tier}</p>
             </div>
             <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-300">
-              You keep {100 - platformFeePercent}%
+              {tier} of {maxTier}
             </div>
           </div>
 
           <div className="mt-6">
             <div className="rounded-lg bg-black/20 p-4">
-              <p className="text-xs text-zinc-500">Creator share tracked</p>
-              <p className="mt-2 text-xl font-bold text-white">{formatCurrency(creatorShare)}</p>
+              <p className="text-xs text-zinc-500">Total received tracked</p>
+              <p className="mt-2 text-xl font-bold text-white">{formatCurrency(totalEarnings)}</p>
             </div>
           </div>
 
           <div className="mt-6">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-400">Rewards tier progress</span>
+              <span className="text-zinc-400">Tier progress</span>
               <span className="font-semibold text-white">Tier {tier} of {maxTier}</span>
             </div>
             <div className="mt-3 h-2 rounded-full bg-zinc-800">

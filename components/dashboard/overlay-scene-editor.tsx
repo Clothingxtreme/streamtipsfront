@@ -74,7 +74,7 @@ function GradientEditor({
   )
 }
 
-export function OverlaySceneEditor({
+export function OverlayFeatureControls({
   customization,
   updateCustomization,
 }: {
@@ -120,12 +120,37 @@ export function OverlaySceneEditor({
           <div className="mt-4 space-y-3 text-sm text-zinc-400">
             <p>Feature toggles update the real overlay immediately, so streamers can fine-tune visible blocks while one OBS browser source stays connected.</p>
             <p>Gradient controls accept direct color picker updates for the panels that remain configurable.</p>
-            <p>Use the Connect to OBS section below for browser-source setup and stream-ready URLs.</p>
+            <p>Use the Connect to OBS section for browser-source setup after copying your stream-ready URLs.</p>
           </div>
         </div>
       </div>
+    </section>
+  )
+}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+export function OverlayGradientControls({
+  customization,
+  updateCustomization,
+}: {
+  customization: OverlayCustomization
+  updateCustomization: <K extends keyof OverlayCustomization>(
+    key: K,
+    value: OverlayCustomization[K],
+  ) => void
+}) {
+  return (
+    <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6">
+      <div className="mb-5">
+        <div className="flex items-center gap-2 text-sm font-medium text-zinc-300">
+          <Palette className="h-4 w-4 text-zinc-500" />
+          Color Gradients
+        </div>
+        <p className="mt-2 text-sm text-zinc-500">
+          Customize the live overlay panels without changing your core StreamTips branding.
+        </p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
         <GradientEditor
           label="Leaderboard Gradient"
           gradient={customization.leaderboardGradient}
@@ -158,5 +183,20 @@ export function OverlaySceneEditor({
         />
       </div>
     </section>
+  )
+}
+
+export function OverlaySceneEditor(props: {
+  customization: OverlayCustomization
+  updateCustomization: <K extends keyof OverlayCustomization>(
+    key: K,
+    value: OverlayCustomization[K],
+  ) => void
+}) {
+  return (
+    <>
+      <OverlayFeatureControls {...props} />
+      <OverlayGradientControls {...props} />
+    </>
   )
 }

@@ -11,11 +11,11 @@ import {
   Bell,
   ShieldCheck,
   Sparkles,
-  Swords,
-  Trophy,
+  Link2,
   Wand2,
   LogOut,
   Menu,
+  PlayCircle,
   X,
   ChevronLeft,
   ChevronRight
@@ -25,7 +25,9 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/app/context/AuthContext"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { VideoGuideLibraryButton } from "@/components/dashboard/video-guide-card"
 import { STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT } from "@/hooks/use-onboarding-tour"
+import { earnMoreGuide, setupTutorialGuide } from "@/lib/video-guides"
 
 interface NavItem {
   label: string
@@ -40,8 +42,7 @@ const navItems: NavItem[] = [
   { label: "Donations", href: "/dashboard/donations", icon: History, tourKey: "donations" },
   { label: "Earnings", href: "/dashboard/earnings", icon: Wallet, tourKey: "earnings" },
   { label: "Virtual Account", href: "/dashboard/account", icon: CreditCard, tourKey: "virtual-account" },
-  { label: "Live Battle", href: "/dashboard/live-battle", icon: Swords, tourKey: "live-battle" },
-  { label: "Creator Rewards", href: "/dashboard/rewards", icon: Trophy, tourKey: "creator-rewards" },
+  { label: "Referrals", href: "/dashboard/rewards", icon: Link2, tourKey: "creator-referrals" },
   { label: "Overlay Settings", href: "/dashboard/overlay", icon: Sparkles, tourKey: "overlay-settings" },
   { label: "Create Custom Gift", href: "/dashboard/custom-gifts", icon: Wand2, tourKey: "custom-gift" },
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell, tourKey: "notifications" },
@@ -59,6 +60,7 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
   const router = useRouter()
   const [collapsed, setCollapsed] = useState(false)
   const { logout, user } = useAuth()
+  const tutorialGuides = [setupTutorialGuide, earnMoreGuide]
 
   const restartGuideTour = () => {
     window.dispatchEvent(new CustomEvent(STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT))
@@ -104,6 +106,19 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
 
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto dashboard-scrollbar">
+          <VideoGuideLibraryButton guides={tutorialGuides}>
+            <button
+              type="button"
+              className={cn(
+                "flex w-full items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                "text-cyan-300 hover:text-cyan-100 hover:bg-cyan-500/10 border border-cyan-500/20",
+              )}
+            >
+              <PlayCircle className="h-5 w-5 shrink-0" />
+              {!collapsed && <span className="text-sm font-medium">Tutorial Videos</span>}
+            </button>
+          </VideoGuideLibraryButton>
+
           {navItems.map((item) => {
             const isActive = pathname === item.href
             return (
@@ -222,6 +237,19 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
             </div>
 
             <nav className="flex-1 space-y-1 overflow-y-auto p-3 dashboard-scrollbar">
+              <VideoGuideLibraryButton guides={tutorialGuides}>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex w-full items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                    "text-cyan-300 hover:text-cyan-100 hover:bg-cyan-500/10 border border-cyan-500/20",
+                  )}
+                >
+                  <PlayCircle className="h-5 w-5 shrink-0" />
+                  <span className="text-sm font-medium">Tutorial Videos</span>
+                </button>
+              </VideoGuideLibraryButton>
+
               {navItems.map((item) => {
                 const isActive = pathname === item.href
                 return (

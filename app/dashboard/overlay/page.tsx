@@ -1,14 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { ObsConnectCard } from "@/components/dashboard/obs-connect-card"
-import { OverlaySceneEditor } from "@/components/dashboard/overlay-scene-editor"
+import { ObsConnectCard, OverlayUrlsCard } from "@/components/dashboard/obs-connect-card"
+import { OverlayFeatureControls, OverlayGradientControls } from "@/components/dashboard/overlay-scene-editor"
+import { VideoGuideCard } from "@/components/dashboard/video-guide-card"
 import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
 import { saveOverlayState } from "@/lib/overlay-state-client"
+import { setupTutorialGuide } from "@/lib/video-guides"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { Flame, Gem, Joystick, Crown, ListOrdered, RotateCcw, Target } from "lucide-react"
+import { Crown, ListOrdered, RotateCcw, Target } from "lucide-react"
 
 function buildGoalGradient(color: string) {
   return {
@@ -43,27 +45,6 @@ export default function OverlaySettingsPage() {
     }
   }
 
-  const comboStyles = [
-    {
-      id: "neon",
-      label: "Neon",
-      icon: Gem,
-      className: "data-[selected=true]:bg-cyan-500 data-[selected=true]:text-cyan-950",
-    },
-    {
-      id: "flame",
-      label: "Flame",
-      icon: Flame,
-      className: "data-[selected=true]:bg-amber-400 data-[selected=true]:text-amber-950",
-    },
-    {
-      id: "arcade",
-      label: "Arcade",
-      icon: Joystick,
-      className: "data-[selected=true]:bg-fuchsia-500 data-[selected=true]:text-white",
-    },
-  ] as const
-
   return (
     <div data-tour="overlay-settings-main" className="max-w-7xl space-y-6 p-6 lg:p-8">
       <div className="space-y-1">
@@ -72,6 +53,19 @@ export default function OverlaySettingsPage() {
           Control alert animations, sounds, desktop notifications, and preview mode across your dashboard and overlay tabs.
         </p>
       </div>
+
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
+        <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Setup tutorial</p>
+            <h2 className="mt-2 text-lg font-semibold text-white">Need help connecting your overlay?</h2>
+            <p className="mt-1 text-sm leading-6 text-zinc-500">
+              Watch the quick setup video before copying your links into OBS or TikTok Studio.
+            </p>
+          </div>
+          <VideoGuideCard guide={setupTutorialGuide} compact />
+        </div>
+      </section>
 
       <section className="flex flex-col gap-5 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -126,99 +120,14 @@ export default function OverlaySettingsPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="max-w-2xl">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fuchsia-500/10 text-fuchsia-200">
-                <Flame className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">Donation Combo</h2>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Build hype when multiple donations arrive close together on the live overlay.
-                </p>
-              </div>
-            </div>
-          </div>
+      <OverlayUrlsCard />
 
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 xl:min-w-[260px]">
-            <div>
-              <p className="font-medium text-white">Enable Combo</p>
-              <p className="text-sm text-zinc-500">Show animated combo streaks on donations.</p>
-            </div>
-            <Switch
-              checked={customization.showDonationCombo}
-              onCheckedChange={(checked) => updateCustomization("showDonationCombo", checked)}
-              className="data-[state=checked]:bg-fuchsia-500"
-            />
-          </div>
-        </div>
+      <OverlayGradientControls
+        customization={customization}
+        updateCustomization={updateCustomization}
+      />
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[0.7fr_1.3fr]">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300">Combo Duration (seconds)</label>
-            <Input
-              type="number"
-              min={3}
-              max={30}
-              step={1}
-              value={customization.comboDurationSeconds}
-              onChange={(event) => {
-                const duration = Number(event.target.value)
-                updateCustomization(
-                  "comboDurationSeconds",
-                  Number.isFinite(duration) ? Math.max(3, Math.min(30, Math.round(duration))) : 10,
-                )
-              }}
-              className="border-zinc-700 bg-zinc-950 text-white placeholder:text-zinc-500"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300">Combo Style</label>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {comboStyles.map((style) => {
-                const Icon = style.icon
-                const selected = customization.comboStyle === style.id
-
-                return (
-                  <Button
-                    key={style.id}
-                    type="button"
-                    variant="ghost"
-                    data-selected={selected}
-                    onClick={() => updateCustomization("comboStyle", style.id)}
-                    className={`justify-start border border-zinc-800 bg-zinc-950 text-zinc-300 hover:bg-zinc-900 hover:text-white ${style.className}`}
-                  >
-                    <Icon className="mr-2 h-4 w-4" />
-                    {style.label}
-                  </Button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-fuchsia-200">
-                Combo Preview
-              </p>
-              <p className="mt-1 text-2xl font-black text-white">
-                Donation Combo x4
-              </p>
-            </div>
-            <div className="h-2 w-full rounded-full bg-zinc-800 sm:w-56">
-              <div className="h-full w-2/3 rounded-full bg-gradient-to-r from-cyan-300 via-fuchsia-400 to-amber-300" />
-            </div>
-          </div>
-          <p className="mt-3 text-sm text-zinc-500">
-            If another donation arrives before the timer ends, the count increases and the timer restarts.
-          </p>
-        </div>
-      </section>
+      <ObsConnectCard />
 
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -321,11 +230,11 @@ export default function OverlaySettingsPage() {
           </div>
         </div>
       </section>
-      <OverlaySceneEditor
+
+      <OverlayFeatureControls
         customization={customization}
         updateCustomization={updateCustomization}
       />
-      <ObsConnectCard />
     </div>
   )
 }
