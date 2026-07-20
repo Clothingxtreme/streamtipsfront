@@ -1,7 +1,6 @@
 export type GiftPackId = "tiktok" | "cosmic" | "luxury"
 export type StreamPlatformId = "tiktok" | "twitch" | "youtube" | "kick"
 export type LeaderboardDisplayMode = "top5" | "champion"
-export type ComboStyleId = "neon" | "flame" | "arcade"
 export type OverlayAnchor =
   | "top-left"
   | "top-center"
@@ -38,9 +37,6 @@ export interface OverlayCustomization {
   showAccountDetails: boolean
   showTopSupporter: boolean
   showAmbientScene: boolean
-  showDonationCombo: boolean
-  comboDurationSeconds: number
-  comboStyle: ComboStyleId
   alertPosition: PositionedOverlayObject
   goalPosition: PositionedOverlayObject
   leaderboardPosition: PositionedOverlayObject
@@ -114,9 +110,6 @@ export const defaultOverlayCustomization: OverlayCustomization = {
   showAccountDetails: true,
   showTopSupporter: true,
   showAmbientScene: true,
-  showDonationCombo: true,
-  comboDurationSeconds: 10,
-  comboStyle: "neon",
   alertPosition: {
     anchor: "center",
     offsetX: 0,
@@ -218,14 +211,6 @@ function sanitizeOpacity(value: unknown, fallback: number) {
     : fallback
 }
 
-function sanitizeComboDuration(value: unknown) {
-  const duration = Number(value)
-
-  return Number.isFinite(duration)
-    ? Math.max(3, Math.min(30, Math.round(duration)))
-    : defaultOverlayCustomization.comboDurationSeconds
-}
-
 function sanitizeColor(value: unknown, fallback: string) {
   return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value.trim())
     ? value.trim()
@@ -252,13 +237,6 @@ export function sanitizeOverlayCustomization(value: unknown): OverlayCustomizati
     candidate.previewPlatform === "kick"
       ? candidate.previewPlatform
       : defaultOverlayCustomization.previewPlatform
-  const comboStyle =
-    candidate.comboStyle === "neon" ||
-    candidate.comboStyle === "flame" ||
-    candidate.comboStyle === "arcade"
-      ? candidate.comboStyle
-      : defaultOverlayCustomization.comboStyle
-
   const goalAmount =
     typeof candidate.goalAmount === "number" && Number.isFinite(candidate.goalAmount)
       ? Math.max(1000, Math.round(candidate.goalAmount))
@@ -309,12 +287,6 @@ export function sanitizeOverlayCustomization(value: unknown): OverlayCustomizati
       typeof candidate.showAmbientScene === "boolean"
         ? candidate.showAmbientScene
         : defaultOverlayCustomization.showAmbientScene,
-    showDonationCombo:
-      typeof candidate.showDonationCombo === "boolean"
-        ? candidate.showDonationCombo
-        : defaultOverlayCustomization.showDonationCombo,
-    comboDurationSeconds: sanitizeComboDuration(candidate.comboDurationSeconds),
-    comboStyle,
     alertPosition: sanitizePosition(
       candidate.alertPosition,
       defaultOverlayCustomization.alertPosition,

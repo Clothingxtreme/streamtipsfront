@@ -25,7 +25,7 @@ import {
   XCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { VideoGuideButton } from "@/components/dashboard/video-guide-card"
+import { VideoGuideModal } from "@/components/dashboard/video-guide-card"
 import { setupTutorialGuide } from "@/lib/video-guides"
 import { cn } from "@/lib/utils"
 
@@ -211,16 +211,23 @@ function LiveStreamMockup() {
               animate={{ y: [0, -8, 0], scale: [1, 1.025, 1] }}
               transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500">
                   <Gift className="h-6 w-6 text-white" />
                 </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-fuchsia-100/70">
-                    Gift Drop
-                  </p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs uppercase tracking-[0.22em] text-fuchsia-100/70">Gift Drop</p>
                   <p className="text-lg font-black text-white">Mira sent NGN 10,000</p>
                 </div>
+                <VideoGuideModal guide={setupTutorialGuide}>
+                  <button
+                    type="button"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-2 text-xs font-black text-white shadow-[0_0_26px_rgba(236,72,153,0.24)] backdrop-blur transition-colors hover:bg-white/15"
+                  >
+                    <Play className="h-3.5 w-3.5 fill-current" />
+                    Watch setup
+                  </button>
+                </VideoGuideModal>
               </div>
             </motion.div>
 
@@ -388,9 +395,6 @@ export default function HomePage() {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <VideoGuideButton guide={setupTutorialGuide}>
-                Watch Setup Video
-              </VideoGuideButton>
             </div>
           </motion.div>
 

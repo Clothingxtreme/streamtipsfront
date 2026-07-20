@@ -21,8 +21,6 @@ import { useOverlaySettings } from "@/app/context/OverlaySettingsContext"
 import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
 import { DonationsTable } from "@/components/dashboard/donations-table"
 import { VirtualAccountCard } from "@/components/dashboard/virtual-account-card"
-import { VideoGuideCard } from "@/components/dashboard/video-guide-card"
-import { earnMoreGuide, setupTutorialGuide } from "@/lib/video-guides"
 import { cn } from "@/lib/utils"
 
 const fallbackVirtualAccount = {
@@ -189,21 +187,33 @@ function SessionReviewCard({
     averageDonation: number
     dateRange: string
     hasPreviousVisit: boolean
+    mode: "since_last_visit" | "recent_activity" | "all_activity"
   }
 }) {
-  const insightPrefix = review.hasPreviousVisit ? "since your last visit" : "in your tracked history"
+  const insightPrefix =
+    review.mode === "since_last_visit"
+      ? "since your last visit"
+      : review.mode === "recent_activity"
+        ? "from recent activity"
+        : "in your tracked history"
+  const title =
+    review.mode === "since_last_visit"
+      ? "Since your previous dashboard visit"
+      : review.mode === "recent_activity"
+        ? "Recent donation activity"
+        : "Donation activity reference"
   const highestDonationText = review.highestDonation
     ? `Your highest donation was ${formatCurrency(review.highestDonation.amount)}.`
-    : "Your highest donation will appear after new activity."
+    : "Your highest donation will appear after donation activity."
 
   return (
     <section className="rounded-xl bg-zinc-900/70 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.16)] sm:p-6">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <SectionLabel>Session Review</SectionLabel>
-          <h2 className="mt-2 text-2xl font-bold text-white">Since your previous dashboard visit</h2>
+          <h2 className="mt-2 text-2xl font-bold text-white">{title}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-            Based only on dashboard activity windows, not livestream start or end detection.
+            Based on donation activity snapshots, not livestream start or end detection.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 text-sm text-zinc-300">
@@ -308,12 +318,29 @@ export default function DashboardPage() {
   const sessionReview = useMemo(() => {
     const previousVisitTime = previousDashboardVisitAt ? new Date(previousDashboardVisitAt).getTime() : 0
     const hasValidPreviousVisit = Boolean(previousVisitTime && !Number.isNaN(previousVisitTime))
-    const reviewDonations = donations
+    const visibleDonations = donations
       .filter(isReviewDonationVisible)
+      .sort((left, right) => getDonationDate(right).getTime() - getDonationDate(left).getTime())
+    const donationsSinceVisit = visibleDonations
       .filter((donation) => {
         if (!hasValidPreviousVisit) return true
         return getDonationDate(donation).getTime() > previousVisitTime
       })
+    const latestDonationTime = visibleDonations[0] ? getDonationDate(visibleDonations[0]).getTime() : 0
+    const recentWindowStart = latestDonationTime ? latestDonationTime - 24 * 60 * 60 * 1000 : 0
+    const recentDonations = recentWindowStart
+      ? visibleDonations.filter((donation) => getDonationDate(donation).getTime() >= recentWindowStart)
+      : []
+    const reviewDonations = donationsSinceVisit.length
+      ? donationsSinceVisit
+      : recentDonations.length
+        ? recentDonations
+        : visibleDonations
+    const mode = donationsSinceVisit.length
+      ? "since_last_visit"
+      : recentDonations.length
+        ? "recent_activity"
+        : "all_activity"
 
     const moneyReceived = reviewDonations.reduce((sum, donation) => sum + Number(donation.amount || 0), 0)
     const highestDonation = reviewDonations.reduce<{ amount: number; name: string } | null>(
@@ -340,9 +367,11 @@ export default function DashboardPage() {
     const topSupporter =
       Array.from(supporterStats.values()).sort((a, b) => b.amount - a.amount || b.count - a.count)[0] || null
     const averageDonation = reviewDonations.length ? Math.round(moneyReceived / reviewDonations.length) : 0
-    const dateRange = hasValidPreviousVisit
+    const dateRange = mode === "since_last_visit"
       ? `${formatSessionDate(previousDashboardVisitAt)} - now`
-      : "All tracked dashboard activity"
+      : mode === "recent_activity" && latestDonationTime
+        ? `Recent activity ending ${formatSessionDate(new Date(latestDonationTime).toISOString())}`
+        : "All tracked dashboard activity"
 
     return {
       moneyReceived,
@@ -351,7 +380,8 @@ export default function DashboardPage() {
       topSupporter,
       averageDonation,
       dateRange,
-      hasPreviousVisit: hasValidPreviousVisit,
+      hasPreviousVisit: mode === "since_last_visit" && hasValidPreviousVisit,
+      mode,
     }
   }, [donations, previousDashboardVisitAt])
 
@@ -366,20 +396,6 @@ export default function DashboardPage() {
       </div>
 
       <SessionReviewCard review={sessionReview} />
-
-      <section className="rounded-xl bg-zinc-900/70 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.14)] sm:p-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <SectionLabel>Learn StreamTips</SectionLabel>
-            <h2 className="mt-2 text-2xl font-bold text-white">Start faster, earn smarter</h2>
-          </div>
-          <p className="text-sm text-zinc-500">Two short videos for setup and donation growth.</p>
-        </div>
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          <VideoGuideCard guide={setupTutorialGuide} compact />
-          <VideoGuideCard guide={earnMoreGuide} compact />
-        </div>
-      </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.35fr_0.9fr]">
         <div className="rounded-xl bg-zinc-900/70 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.18)] sm:p-6">
