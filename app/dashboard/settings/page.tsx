@@ -263,7 +263,7 @@ function getVerificationClass(status?: string) {
 }
 
 export default function SettingsPage() {
-  const { user, refreshUser } = useAuth()
+  const { user, refreshUser, logout } = useAuth()
   const { preferences, updatePreference } = useAppPreferences()
   const { customization, updateCustomization } = useOverlayCustomization()
   const { settings: overlaySettings, updateSetting } = useOverlaySettings()
@@ -317,6 +317,10 @@ export default function SettingsPage() {
   const [passwordState, setPasswordState] = useState<SaveState>("idle")
   const [profileMessage, setProfileMessage] = useState("")
   const [passwordMessage, setPasswordMessage] = useState("")
+  const [deletePassword, setDeletePassword] = useState("")
+  const [deleteReason, setDeleteReason] = useState("")
+  const [deleteState, setDeleteState] = useState<SaveState>("idle")
+  const [deleteMessage, setDeleteMessage] = useState("")
   const [isLoadingUser, setIsLoadingUser] = useState(true)
   const [continuePayoutSetup, setContinuePayoutSetup] = useState(false)
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile")
@@ -823,6 +827,38 @@ export default function SettingsPage() {
     }
   }
 
+  const handleAccountDeletion = async () => {
+    if (!deletePassword) {
+      setDeleteState("error")
+      setDeleteMessage("Enter your current password to archive your account.")
+      return
+    }
+
+    if (!window.confirm("Archive your StreamTip account? You will be signed out immediately. Financial and compliance records will be retained.")) {
+      return
+    }
+
+    setDeleteState("saving")
+    setDeleteMessage("")
+    try {
+      const response = await authRequest("/user", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword: deletePassword, reason: deleteReason.trim() }),
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(payload?.error || "Could not archive your account.")
+      }
+
+      await logout()
+      window.location.assign("/")
+    } catch (error) {
+      setDeleteState("error")
+      setDeleteMessage(error instanceof Error ? error.message : "Could not archive your account.")
+    }
+  }
+
   const handleRestartGuideTour = () => {
     window.dispatchEvent(new CustomEvent(STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT))
     setProfileMessage("Creator guide tour restarted.")
@@ -1288,14 +1324,49 @@ export default function SettingsPage() {
                 <PlaceholderCard title="Recent login activity" description="Security history will appear in this space." />
               </div>
 
-              <SettingsPanel title="Creator Guide" description="Restart the guided product tour whenever a creator needs onboarding again.">
+                <SettingsPanel title="Creator Guide" description="Restart the guided product tour whenever a creator needs onboarding again.">
                 <Button type="button" variant="outline" onClick={handleRestartGuideTour} className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900">
                   Restart Guide Tour
                 </Button>
                 {profileMessage && saveState !== "error" ? <FeedbackMessage state="saved" message={profileMessage} /> : null}
-              </SettingsPanel>
+                </SettingsPanel>
 
-              <TabSaveBar disabled={passwordState === "saving" || !passwordDirty} state={passwordState} idleLabel="Save Changes" savingLabel="Updating..." savedLabel="Updated" onSave={handlePasswordSave} />
+                <SettingsPanel title="Archive Account" description="Revoke access to this account while StreamTip retains financial, KYC, and audit records required for compliance.">
+                  <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-100">
+                    Your public overlay and active session will be disabled immediately. This is not a permanent data erasure; contact support if you need a restoration review.
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Field label="Current password">
+                      <Input
+                        type="password"
+                        value={deletePassword}
+                        onChange={(event) => setDeletePassword(event.target.value)}
+                        autoComplete="current-password"
+                        className="border-zinc-700 bg-zinc-950/70 text-white"
+                      />
+                    </Field>
+                    <Field label="Reason (optional)">
+                      <Input
+                        value={deleteReason}
+                        onChange={(event) => setDeleteReason(event.target.value)}
+                        placeholder="Why are you leaving?"
+                        className="border-zinc-700 bg-zinc-950/70 text-white"
+                      />
+                    </Field>
+                  </div>
+                  {deleteMessage ? <FeedbackMessage state={deleteState} message={deleteMessage} /> : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={deleteState === "saving"}
+                    onClick={handleAccountDeletion}
+                    className="border-rose-500/40 bg-rose-500/10 text-rose-100 hover:bg-rose-500/20"
+                  >
+                    {deleteState === "saving" ? "Archiving account..." : "Archive my account"}
+                  </Button>
+                </SettingsPanel>
+
+                <TabSaveBar disabled={passwordState === "saving" || !passwordDirty} state={passwordState} idleLabel="Save Changes" savingLabel="Updating..." savedLabel="Updated" onSave={handlePasswordSave} />
             </div>
           ) : null}
         </motion.section>

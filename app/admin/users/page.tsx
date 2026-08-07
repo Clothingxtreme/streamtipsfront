@@ -477,11 +477,11 @@ export default function AdminUsersPage() {
       const remoteDeallocation = data?.remoteDeallocation || {}
 
       if (remoteDeallocation.alreadyMissing) {
-        setMessage("Virtual account removed from StreamTip. The provider had already deleted it.")
+        setMessage("Virtual account archived in StreamTip. The provider had already deallocated it.")
       } else if (remoteDeallocation.attempted) {
-        setMessage("Virtual account deleted from the provider and removed from StreamTip.")
+        setMessage("Virtual account deallocated with the provider and archived in StreamTip.")
       } else {
-        setMessage("Virtual account removed from StreamTip.")
+        setMessage("Virtual account archived in StreamTip.")
       }
 
       await loadUsers(usersPagination.page)
@@ -508,16 +508,16 @@ export default function AdminUsersPage() {
       const data = await response.json().catch(() => null)
 
       if (!response.ok) {
-        throw new Error(data?.error || "Could not delete user.")
+        throw new Error(data?.error || "Could not archive user.")
       }
 
-      setMessage("User account deleted successfully.")
+      setMessage("User account archived successfully. Financial and compliance records were retained.")
       if (selectedUserId === userId) {
         setSelectedUserId("")
       }
       await loadUsers(usersPagination.page)
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Could not delete user.")
+      setError(requestError instanceof Error ? requestError.message : "Could not archive user.")
     } finally {
       setSubmitting(false)
     }
@@ -1079,14 +1079,14 @@ export default function AdminUsersPage() {
                         className="border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Virtual Account
+                        Archive Virtual Account
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent className="border-zinc-800 bg-zinc-950 text-white">
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete this virtual account?</AlertDialogTitle>
+                        <AlertDialogTitle>Archive this virtual account?</AlertDialogTitle>
                         <AlertDialogDescription className="text-zinc-400">
-                          This removes the saved account details from StreamTip. Legacy provider accounts are deallocated when the provider still supports it.
+                          This retains the saved account record in StreamTip's archive. The provider account is deallocated when supported.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -1097,7 +1097,7 @@ export default function AdminUsersPage() {
                           onClick={() => void deleteVirtualAccount(selectedUser.id)}
                           className="bg-red-600 text-white hover:bg-red-700"
                         >
-                          Yes, delete account
+                          Yes, archive account
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -1110,15 +1110,15 @@ export default function AdminUsersPage() {
                         className="border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete User
+                        Archive User
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent className="border-zinc-800 bg-zinc-950 text-white">
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete this user account?</AlertDialogTitle>
+                        <AlertDialogTitle>Archive this user account?</AlertDialogTitle>
                         <AlertDialogDescription className="text-zinc-400">
-                          This will permanently remove {selectedUser.email} and their creator data.
-                          Use this only when you are sure.
+                          This immediately revokes access and hides {selectedUser.email} from normal lists.
+                          Financial, KYC, and audit records remain retained for compliance and can be restored by an administrator.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -1129,7 +1129,7 @@ export default function AdminUsersPage() {
                           onClick={() => void deleteUser(selectedUser.id)}
                           className="bg-red-600 text-white hover:bg-red-700"
                         >
-                          Yes, delete user
+                          Yes, archive user
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

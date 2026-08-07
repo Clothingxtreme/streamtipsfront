@@ -76,7 +76,7 @@ export interface AppUser {
   email: string
   overlaySlug?: string
   role?: "creator" | "admin"
-  status?: "active" | "suspended" | "banned"
+  status?: "active" | "suspended" | "banned" | "deleted"
   profileImage?: string
   referralCode?: string
   referredByCode?: string
