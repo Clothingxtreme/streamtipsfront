@@ -64,6 +64,7 @@ type UserDraft = {
   dateOfBirth: string
   email: string
   phoneNumber: string
+  monnifySplitPercentage: number
   password: string
   role: UserRole
   status: UserStatus
@@ -78,6 +79,7 @@ const emptyDraft: UserDraft = {
   dateOfBirth: "",
   email: "",
   phoneNumber: "",
+  monnifySplitPercentage: 20,
   password: "",
   role: "creator",
   status: "active",
@@ -298,6 +300,7 @@ export default function AdminUsersPage() {
       password: "",
       role: selectedUser.role || "creator",
       status: selectedUser.status || "active",
+      monnifySplitPercentage: Number(selectedUser.monnifySplitPercentage ?? 20),
       provisionVirtualAccount: false,
     })
   }, [selectedUser])
@@ -350,6 +353,7 @@ export default function AdminUsersPage() {
           },
           password: editDraft.password,
           role: editDraft.role,
+          monnifySplitPercentage: editDraft.monnifySplitPercentage,
           status: editDraft.status,
         }),
       })
@@ -708,6 +712,24 @@ export default function AdminUsersPage() {
                   }
                 />
               </FormField>
+              <FormField label="Monnify Split Percentage">
+  <Input
+    type="number"
+    min={1}
+    max={99}
+    value={editDraft.monnifySplitPercentage}
+    onChange={(event) =>
+      setEditDraft((current) => ({
+        ...current,
+        monnifySplitPercentage: Number(event.target.value),
+      }))
+    }
+    className="border-zinc-700 bg-zinc-950/70 text-white"
+  />
+  <p className="mt-1 text-xs text-zinc-500">
+    Percentage paid to this creator. The platform receives the remainder.
+  </p>
+</FormField>
             </div>
 
             <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-zinc-300">

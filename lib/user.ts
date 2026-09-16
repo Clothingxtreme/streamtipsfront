@@ -75,6 +75,7 @@ export interface AppUser {
   lastName?: string
   email: string
   overlaySlug?: string
+  monnifySplitPercentage?: number
   role?: "creator" | "admin"
   status?: "active" | "suspended" | "banned" | "deleted"
   profileImage?: string
