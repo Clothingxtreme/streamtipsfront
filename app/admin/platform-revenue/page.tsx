@@ -159,7 +159,7 @@ export default function PlatformRevenuePage() {
       <div className="space-y-1">
         <h1 className="text-3xl font-black text-white">Platform Revenue</h1>
         <p className="text-zinc-400">
-          Track all-time platform 20% earnings and inspect donation-level revenue with date filters.
+          Track all-time platform fee earnings and inspect donation-level revenue with date filters.
         </p>
       </div>
 

@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState, type ElementType, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type ElementType, type ReactNode } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   AlertTriangle,
-  AtSign,
   Bell,
   Building2,
   Check,
@@ -15,13 +14,13 @@ import {
   ImagePlus,
   KeyRound,
   Landmark,
-  Link2,
   LoaderCircle,
   Mail,
   MonitorPlay,
   Phone,
   RadioTower,
   Save,
+  Sigma,
   ShieldCheck,
   Sparkles,
   Target,
@@ -46,6 +45,8 @@ import { useOverlayCustomization } from "@/app/context/OverlayCustomizationConte
 import { useOverlaySettings } from "@/app/context/OverlaySettingsContext"
 import { HelpTip } from "@/components/help-tip"
 import { giftPackThemes } from "@/lib/gifts"
+import type { GiftPackId } from "@/lib/overlay-customization"
+import Link from "next/link"
 import { authRequest } from "@/lib/auth-client"
 import { STREAMTIP_ONBOARDING_TOUR_RESTART_EVENT } from "@/hooks/use-onboarding-tour"
 import { toast } from "@/hooks/use-toast"
@@ -53,9 +54,22 @@ import { notificationSoundOptions, type NotificationSoundId } from "@/lib/app-pr
 import { emitNotificationFeedback } from "@/lib/notification-runtime"
 import { getOverlayUrl, type OverlayUrlMode } from "@/lib/runtime-config"
 import { cn } from "@/lib/utils"
+import {
+  CREATOR_NICKNAME_MAX_LENGTH,
+  getCreatorNickname,
+  normalizeCreatorNickname,
+  validateCreatorNickname,
+} from "@/lib/nickname"
 import type { AppPreferences } from "@/lib/app-preferences"
 import type { OverlaySettingId } from "@/lib/overlay-settings"
 import type { AppUser } from "@/lib/user"
+import {
+  SocialProfileFields,
+  formatSocialPlatform,
+  getSocialProfileDraft,
+  hasSocialProfile,
+  type SocialProfileDraft,
+} from "@/components/dashboard/social-profile-fields"
 
 type ProfileForm = {
   firstName: string
@@ -65,10 +79,6 @@ type ProfileForm = {
   phoneNumber: string
   dateOfBirth: string
   profileImage: string
-  socialPlatform: string
-  socialHandle: string
-  socialProfileUrl: string
-  socialLiveUrl: string
 }
 
 type PasswordForm = {
@@ -171,6 +181,12 @@ const OVERLAY_URL_CARDS: Array<{
     title: "Account Widget",
     description: "Virtual account widget viewers can copy during streams.",
     icon: Wallet,
+  },
+  {
+    mode: "total",
+    title: "Donation Total",
+    description: "Running total of donations since your last reset.",
+    icon: Sigma,
   },
 ]
 
@@ -275,10 +291,6 @@ export default function SettingsPage() {
     phoneNumber: "",
     dateOfBirth: "",
     profileImage: "",
-    socialPlatform: "",
-    socialHandle: "",
-    socialProfileUrl: "",
-    socialLiveUrl: "",
   })
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
     currentPassword: "",
@@ -314,6 +326,17 @@ export default function SettingsPage() {
     confirmPassword: false,
   })
   const [saveState, setSaveState] = useState<SaveState>("idle")
+  const savedNickname = getCreatorNickname(user)
+  const [nicknameInput, setNicknameInput] = useState(savedNickname)
+  const [nicknameState, setNicknameState] = useState<SaveState>("idle")
+  const [nicknameMessage, setNicknameMessage] = useState("")
+  const nicknameSavingRef = useRef(false)
+  const [socialDraft, setSocialDraft] = useState<SocialProfileDraft>(() => getSocialProfileDraft(user))
+  const [socialState, setSocialState] = useState<SaveState>("idle")
+  const [socialMessage, setSocialMessage] = useState("")
+  const socialSavingRef = useRef(false)
+  const syncedProfileRef = useRef<ProfileForm | null>(null)
+  const syncedSocialRef = useRef<SocialProfileDraft | null>(null)
   const [passwordState, setPasswordState] = useState<SaveState>("idle")
   const [profileMessage, setProfileMessage] = useState("")
   const [passwordMessage, setPasswordMessage] = useState("")
@@ -340,7 +363,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const nameParts = getUserNameParts(user)
-    setProfile({
+    const nextProfile: ProfileForm = {
       firstName: nameParts.firstName,
       middleName: nameParts.middleName,
       lastName: nameParts.lastName,
@@ -348,10 +371,30 @@ export default function SettingsPage() {
       phoneNumber: user?.phoneNumber || "",
       dateOfBirth: user?.identity?.dateOfBirth?.slice(0, 10) || "",
       profileImage: user?.profileImage || "",
-      socialPlatform: user?.socialProfile?.platform || "",
-      socialHandle: user?.socialProfile?.handle || "",
-      socialProfileUrl: user?.socialProfile?.profileUrl || "",
-      socialLiveUrl: user?.socialProfile?.liveUrl || "",
+    }
+    const nextSocial = getSocialProfileDraft(user)
+    const previousProfile = syncedProfileRef.current
+    const previousSocial = syncedSocialRef.current
+    syncedProfileRef.current = nextProfile
+    syncedSocialRef.current = nextSocial
+
+    // Settings now has several independent save buttons that refresh the user. Keep any field the creator
+    // has edited but not saved yet; refresh everything else from the latest saved profile.
+    setProfile((current) => {
+      if (!previousProfile) return nextProfile
+      const merged = { ...nextProfile }
+      for (const key of Object.keys(nextProfile) as Array<keyof ProfileForm>) {
+        if (current[key] !== previousProfile[key]) merged[key] = current[key]
+      }
+      return merged
+    })
+    setSocialDraft((current) => {
+      if (!previousSocial) return nextSocial
+      const merged = { ...nextSocial }
+      for (const key of Object.keys(nextSocial) as Array<keyof SocialProfileDraft>) {
+        if (current[key] !== previousSocial[key]) merged[key] = current[key]
+      }
+      return merged
     })
     setIsLoadingUser(false)
   }, [user])
@@ -466,10 +509,6 @@ export default function SettingsPage() {
       profile.email !== (user?.email || "") ||
       profile.phoneNumber !== (user?.phoneNumber || "") ||
       profile.profileImage !== (user?.profileImage || "") ||
-      profile.socialPlatform !== (user?.socialProfile?.platform || "") ||
-      profile.socialHandle !== (user?.socialProfile?.handle || "") ||
-      profile.socialProfileUrl !== (user?.socialProfile?.profileUrl || "") ||
-      profile.socialLiveUrl !== (user?.socialProfile?.liveUrl || "") ||
       Boolean(kycForm.bvn || kycForm.nin)
     )
   }, [kycForm.bvn, kycForm.nin, profile, user])
@@ -534,6 +573,141 @@ export default function SettingsPage() {
     reader.readAsDataURL(file)
   }
 
+  useEffect(() => {
+    setNicknameInput(savedNickname)
+  }, [savedNickname])
+
+  const nicknameDirty = normalizeCreatorNickname(nicknameInput) !== savedNickname
+
+  const handleNicknameSave = async () => {
+    if (nicknameSavingRef.current || !user) return
+
+    const validationError = validateCreatorNickname(nicknameInput)
+    if (validationError) {
+      setNicknameState("error")
+      setNicknameMessage(validationError)
+      return
+    }
+
+    nicknameSavingRef.current = true
+    setNicknameState("saving")
+    setNicknameMessage("")
+
+    try {
+      const response = await authRequest("/user/nickname", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nickname: normalizeCreatorNickname(nicknameInput) }),
+      })
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Could not save your creator nickname.")
+      }
+
+      const previousReferralCode = String((user as { referralCode?: string } | null)?.referralCode || "")
+      const nextReferralCode = String((payload as { referralCode?: string } | null)?.referralCode || "")
+      setNicknameInput(getCreatorNickname(payload as AppUser))
+      await refreshUser()
+      setNicknameState("saved")
+      setNicknameMessage(
+        nextReferralCode && nextReferralCode !== previousReferralCode
+          ? `Creator nickname saved. Your referral code is now ${nextReferralCode}; links with your old code still work.`
+          : "Creator nickname saved. Your overlay will show it on its next refresh.",
+      )
+    } catch (error) {
+      setNicknameState("error")
+      setNicknameMessage(
+        error instanceof TypeError
+          ? "Couldn't reach the server. Check your connection and try again."
+          : error instanceof Error
+            ? error.message
+            : "Could not save your creator nickname.",
+      )
+    } finally {
+      nicknameSavingRef.current = false
+    }
+  }
+
+  const savedSocialDraft = getSocialProfileDraft(user)
+  const socialDirty =
+    (socialDraft.platform || "tiktok") !== (savedSocialDraft.platform || "tiktok") ||
+    socialDraft.handle.trim() !== savedSocialDraft.handle ||
+    socialDraft.profileUrl.trim() !== savedSocialDraft.profileUrl ||
+    socialDraft.liveUrl.trim() !== savedSocialDraft.liveUrl
+
+  // Same request the former "Add your social page" dashboard popup sent: the creator's saved profile
+  // details plus the updated socialProfile, so unsaved edits elsewhere on this page are never submitted.
+  const handleSocialSave = async () => {
+    if (socialSavingRef.current || !user) return
+
+    socialSavingRef.current = true
+    setSocialState("saving")
+    setSocialMessage("")
+
+    try {
+      const response = await authRequest("/user", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: user.firstName || user.identity?.firstName || "",
+          middleName: user.middleName || user.identity?.middleName || "",
+          lastName: user.lastName || user.identity?.lastName || "",
+          email: user.email,
+          phoneNumber: user.phoneNumber || "",
+          dateOfBirth: user.identity?.dateOfBirth?.slice(0, 10) || "",
+          profileImage: user.profileImage || "",
+          socialProfile: {
+            platform: socialDraft.platform || "tiktok",
+            handle: socialDraft.handle.trim(),
+            profileUrl: socialDraft.profileUrl.trim(),
+            liveUrl: socialDraft.liveUrl.trim(),
+          },
+        }),
+      })
+      const payload = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(payload?.error || "Could not save social profile.")
+      }
+
+      setSocialDraft(getSocialProfileDraft(payload as AppUser))
+      await refreshUser()
+      setSocialState("saved")
+      setSocialMessage("Social profile saved.")
+    } catch (error) {
+      setSocialState("error")
+      setSocialMessage(
+        error instanceof TypeError
+          ? "Couldn't reach the server. Check your connection and try again."
+          : error instanceof Error
+            ? error.message
+            : "Could not save social profile.",
+      )
+    } finally {
+      socialSavingRef.current = false
+    }
+  }
+
+  // Deep links from the dashboard (#social-profiles) and the virtual-account BVN prompt (#bvn-verification).
+  useEffect(() => {
+    if (isLoadingUser || typeof window === "undefined") return
+    const hash = window.location.hash
+    const target = hash === "#social-profiles" ? "social-profiles" : hash === "#bvn-verification" ? "bvn-verification" : ""
+    if (!target) return
+    if (target === "bvn-verification") setActiveTab("payments")
+    let inner = 0
+    const frame = window.requestAnimationFrame(() => {
+      inner = window.requestAnimationFrame(() => {
+        document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" })
+      })
+    })
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.cancelAnimationFrame(inner)
+    }
+  }, [isLoadingUser])
+
   const handleProfileSave = async () => {
     if (!profile.firstName.trim() || !profile.lastName.trim() || !profile.email.trim()) {
       setSaveState("error")
@@ -582,12 +756,6 @@ export default function SettingsPage() {
           phoneNumber: profile.phoneNumber.trim(),
           dateOfBirth: profile.dateOfBirth.trim(),
           profileImage: profile.profileImage,
-          socialProfile: {
-            platform: profile.socialPlatform.trim(),
-            handle: profile.socialHandle.trim(),
-            profileUrl: profile.socialProfileUrl.trim(),
-            liveUrl: profile.socialLiveUrl.trim(),
-          },
           ...(kycForm.bvn ? { bvn: kycForm.bvn } : {}),
           ...(kycForm.nin ? { nin: kycForm.nin } : {}),
         }),
@@ -610,10 +778,6 @@ export default function SettingsPage() {
         phoneNumber: nextUser.phoneNumber || "",
         dateOfBirth: nextUser.identity?.dateOfBirth?.slice(0, 10) || "",
         profileImage: nextUser.profileImage || "",
-        socialPlatform: nextUser.socialProfile?.platform || "",
-        socialHandle: nextUser.socialProfile?.handle || "",
-        socialProfileUrl: nextUser.socialProfile?.profileUrl || "",
-        socialLiveUrl: nextUser.socialProfile?.liveUrl || "",
       })
       setKycForm({ bvn: "", nin: "" })
       setSaveState("saved")
@@ -924,16 +1088,13 @@ export default function SettingsPage() {
   }
 
   return (
-    <div data-tour="settings-main" className="mx-auto max-w-6xl space-y-8 p-5 pb-12 lg:p-8">
-      <div className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-fuchsia-300">Creator Settings</p>
-        <div className="max-w-3xl space-y-2">
-          <h1 className="text-3xl font-bold text-white">Settings</h1>
-          <p className="text-sm leading-6 text-zinc-500 md:text-base">
-            Manage your profile, payment verification, stream overlays, notifications, and account security in one clean workspace.
-          </p>
-        </div>
-      </div>
+    <div data-tour="settings-main" className="mx-auto w-full max-w-6xl space-y-5 p-4 pb-12 sm:p-6 lg:p-8">
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Settings</h1>
+        <p className="mt-1 max-w-2xl text-sm text-zinc-400">
+          Your profile, payments and verification, stream setup, notifications and security.
+        </p>
+      </header>
 
       <div className="sticky top-0 z-30 -mx-5 border-y border-white/10 bg-black/80 px-5 py-3 backdrop-blur-xl lg:static lg:mx-0 lg:rounded-2xl lg:border lg:bg-zinc-950/60 lg:p-2">
         <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-5 lg:overflow-visible lg:pb-0">
@@ -989,8 +1150,69 @@ export default function SettingsPage() {
           {activeTab === "profile" ? (
             <div className="space-y-6">
               <SettingsPanel
+                title="Creator Nickname"
+                description="Your public name. Supporters see it on your overlay, in battles, and on referral pages, and it sets your referral code (older codes keep working). It never changes your legal name or payout details."
+              >
+                <form
+                  className="flex flex-col gap-3 sm:flex-row sm:items-start"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    void handleNicknameSave()
+                  }}
+                >
+                  <div className="flex-1 space-y-2">
+                    <label htmlFor="settings-nickname" className="sr-only">
+                      Creator nickname
+                    </label>
+                    <Input
+                      id="settings-nickname"
+                      value={nicknameInput}
+                      onChange={(event) => {
+                        setNicknameInput(event.target.value)
+                        if (nicknameState !== "saving") {
+                          setNicknameState("idle")
+                          setNicknameMessage("")
+                        }
+                      }}
+                      maxLength={CREATOR_NICKNAME_MAX_LENGTH * 2}
+                      placeholder={isLoadingUser ? "Loading..." : "e.g. AdaPlays"}
+                      disabled={!user || nicknameState === "saving"}
+                      aria-invalid={nicknameState === "error" || undefined}
+                      aria-describedby="settings-nickname-hint"
+                      className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500"
+                    />
+                    <p id="settings-nickname-hint" className="flex justify-between gap-3 text-xs text-zinc-500">
+                      <span>
+                        {savedNickname
+                          ? `Currently shown as “${savedNickname}”.`
+                          : user
+                            ? "You haven't set a nickname yet. Your overlay shows your account name until you do."
+                            : ""}
+                      </span>
+                      <span className="shrink-0 tabular-nums">
+                        {Array.from(nicknameInput).length}/{CREATOR_NICKNAME_MAX_LENGTH}
+                      </span>
+                    </p>
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={!user || !nicknameDirty || nicknameState === "saving"}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white sm:min-w-32"
+                  >
+                    {nicknameState === "saving" ? (
+                      <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    {nicknameState === "saving" ? "Saving..." : savedNickname ? "Update nickname" : "Save nickname"}
+                  </Button>
+                </form>
+                {nicknameMessage ? <FeedbackMessage state={nicknameState} message={nicknameMessage} /> : null}
+              </SettingsPanel>
+
+              <SettingsPanel
                 title="Creator Profile"
-                description="Only the identity and social details creators need to update frequently."
+                description="Only the identity and contact details creators need to update frequently."
               >
                 <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
                   <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-fuchsia-500/30 bg-zinc-950/80 shadow-lg shadow-fuchsia-950/20">
@@ -1047,32 +1269,6 @@ export default function SettingsPage() {
                   </Field>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Social Platform" icon={RadioTower}>
-                    <Select value={profile.socialPlatform || "tiktok"} onValueChange={(value) => handleProfileChange("socialPlatform", value)}>
-                      <SelectTrigger className="border-zinc-700 bg-zinc-950/70 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="border-zinc-800 bg-zinc-900">
-                        {["tiktok", "instagram", "youtube", "x", "twitch", "facebook", "other"].map((platform) => (
-                          <SelectItem key={platform} value={platform} className="text-white focus:bg-zinc-800 focus:text-white">
-                            {platform === "x" ? "X / Twitter" : platform.charAt(0).toUpperCase() + platform.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Social Handle" icon={AtSign}>
-                    <Input value={profile.socialHandle} onChange={(event) => handleProfileChange("socialHandle", event.target.value.replace(/^@+/, ""))} placeholder="creatorhandle" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
-                  </Field>
-                  <Field label="Social Media Profile" icon={Link2}>
-                    <Input value={profile.socialProfileUrl} onChange={(event) => handleProfileChange("socialProfileUrl", event.target.value)} placeholder="https://www.tiktok.com/@creatorhandle" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
-                  </Field>
-                  <Field label="Live Page Link" icon={RadioTower}>
-                    <Input value={profile.socialLiveUrl} onChange={(event) => handleProfileChange("socialLiveUrl", event.target.value)} placeholder="Optional direct live URL" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
-                  </Field>
-                </div>
-
                 {profileMessage ? <FeedbackMessage state={saveState} message={profileMessage} /> : null}
               </SettingsPanel>
 
@@ -1085,6 +1281,91 @@ export default function SettingsPage() {
                 savedLabel="Saved"
                 onSave={handleProfileSave}
               />
+
+              <div id="social-profiles" className="scroll-mt-6">
+                <SettingsPanel
+                  title="Social Profiles"
+                  description="Add the account you use for live streams so StreamTip can identify your page and help with your live setup."
+                >
+                  {hasSocialProfile(user) ? (
+                    <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-zinc-950/60 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">Saved page</p>
+                        <p className="mt-1 truncate font-semibold text-white">
+                          {formatSocialPlatform(user?.socialProfile?.platform || "tiktok")}
+                          {user?.socialProfile?.handle ? ` \u00b7 @${user.socialProfile.handle}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        {user?.socialProfile?.profileUrl ? (
+                          <a href={user.socialProfile.profileUrl} target="_blank" rel="noopener noreferrer" className="text-purple-200 underline-offset-4 hover:underline">
+                            Profile link
+                          </a>
+                        ) : null}
+                        {user?.socialProfile?.liveUrl ? (
+                          <a href={user.socialProfile.liveUrl} target="_blank" rel="noopener noreferrer" className="text-purple-200 underline-offset-4 hover:underline">
+                            Live link
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : user ? (
+                    <div className="rounded-xl border border-dashed border-white/10 px-4 py-3 text-sm text-zinc-400">
+                      No social page added yet. Add your handle, profile link, or live link below.
+                    </div>
+                  ) : null}
+
+                  <form
+                    className="space-y-4"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      void handleSocialSave()
+                    }}
+                  >
+                    <SocialProfileFields
+                      idPrefix="settings-social"
+                      value={socialDraft}
+                      disabled={!user || socialState === "saving"}
+                      onChange={(next) => {
+                        setSocialDraft(next)
+                        if (socialState !== "saving") {
+                          setSocialState("idle")
+                          setSocialMessage("")
+                        }
+                      }}
+                    />
+                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+                      {socialDirty && socialState !== "saving" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setSocialDraft(getSocialProfileDraft(user))
+                            setSocialState("idle")
+                            setSocialMessage("")
+                          }}
+                          className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
+                        >
+                          Discard changes
+                        </Button>
+                      ) : null}
+                      <Button
+                        type="submit"
+                        disabled={!user || !socialDirty || socialState === "saving"}
+                        className="bg-gradient-to-r from-fuchsia-500 to-rose-500 text-white hover:opacity-90"
+                      >
+                        {socialState === "saving" ? (
+                          <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        {socialState === "saving" ? "Saving..." : "Save Social Profile"}
+                      </Button>
+                    </div>
+                  </form>
+                  {socialMessage ? <FeedbackMessage state={socialState} message={socialMessage} /> : null}
+                </SettingsPanel>
+              </div>
             </div>
           ) : null}
 
@@ -1115,6 +1396,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              <div id="bvn-verification" className="scroll-mt-6">
               <SettingsPanel title="Verification Status" description="BVN, NIN, tier, reserved account, and KYC status.">
                 <div className="grid gap-4 md:grid-cols-3">
                   <StatusPill label="Creator Tier" value={`Tier ${creatorTier}`} />
@@ -1137,6 +1419,7 @@ export default function SettingsPage() {
                   <StatusPill label="Reserved Bank" value={user?.virtualAccount?.bankName || "Not available"} />
                 </div>
               </SettingsPanel>
+              </div>
 
               <SettingsPanel title="Settlement Information" description="Withdrawal account and account change requests.">
                 {continuePayoutSetup && !user?.payoutProfile?.locked ? (
@@ -1212,6 +1495,18 @@ export default function SettingsPage() {
               </SettingsPanel>
 
               <SettingsPanel title="Overlay URLs" description="Copy each lightweight overlay into your streaming software.">
+                {user && !savedNickname ? (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
+                    Your account-number overlay shows your account name because you haven&apos;t set a creator nickname.{" "}
+                    <button
+                      type="button"
+                      onClick={() => switchTab("profile")}
+                      className="font-semibold text-white underline underline-offset-4"
+                    >
+                      Set a nickname
+                    </button>
+                  </div>
+                ) : null}
                 <div className="grid gap-4 md:grid-cols-2">
                   {OVERLAY_URL_CARDS.map(({ mode, title, description, settingId, icon: Icon }) => {
                     const enabled = settingId ? overlaySettings[settingId] : true
@@ -1247,29 +1542,26 @@ export default function SettingsPage() {
                 </div>
               </SettingsPanel>
 
-              <SettingsPanel title="Donation Goal Settings" description="Goal overlay customization stays lightweight so it does not cover creators' streams.">
+              <SettingsPanel title="Goal and gift style" description="Goal title and amount live in Overlay Settings. Overlay colours are fixed so every stream stays readable.">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field label="Goal Title">
-                    <Input value={customization.goalTitle} onChange={(event) => updateCustomization("goalTitle", event.target.value)} placeholder="Gaming Chair" className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
-                  </Field>
-                  <Field label="Goal Amount">
-                    <Input inputMode="numeric" value={String(customization.goalAmount)} onChange={(event) => updateCustomization("goalAmount", Math.max(1000, Number(event.target.value.replace(/\D/g, "")) || 1000))} className="border-zinc-700 bg-zinc-950/70 text-white placeholder:text-zinc-500" />
-                  </Field>
-                  <Field label="Goal Color">
-                    <Input type="color" value={customization.goalColor} onChange={(event) => {
-                      updateCustomization("goalColor", event.target.value)
-                      updateCustomization("goalGradient", { start: event.target.value, middle: "#011B33", end: event.target.value })
-                    }} className="h-11 border-zinc-700 bg-zinc-950/70 p-1 text-white" />
-                  </Field>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-zinc-950/60 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-white">{customization.goalTitle || "Donation goal"}</p>
+                      <p className="text-xs text-zinc-500 tabular-nums">Goal NGN {Number(customization.goalAmount || 0).toLocaleString()}</p>
+                    </div>
+                    <Link href="/dashboard/overlay?tab=goal" className="shrink-0 text-sm font-medium text-white underline underline-offset-4">
+                      Edit goal
+                    </Link>
+                  </div>
                   <Field label="Gift Animation Style">
-                    <Select value={customization.giftPack} onValueChange={(value) => updateCustomization("giftPack", value)}>
+                    <Select value={customization.giftPack} onValueChange={(value) => updateCustomization("giftPack", value as GiftPackId)}>
                       <SelectTrigger className="border-zinc-700 bg-zinc-950/70 text-white">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="border-zinc-800 bg-zinc-900">
                         {giftPackThemes.map((theme) => (
                           <SelectItem key={theme.id} value={theme.id} className="text-white focus:bg-zinc-800 focus:text-white">
-                            {theme.name}
+                            {theme.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1385,9 +1677,9 @@ function SettingsPanel({
   children: ReactNode
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5 shadow-xl shadow-black/10 md:p-6">
-      <div className="mb-6 space-y-1">
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
+    <div className="rounded-2xl border border-white/[0.07] bg-zinc-900/60 p-5 sm:p-6">
+      <div className="mb-5 space-y-1">
+        <h3 className="text-base font-semibold text-white">{title}</h3>
         <p className="text-sm leading-6 text-zinc-500">{description}</p>
       </div>
       <div className="space-y-5">{children}</div>

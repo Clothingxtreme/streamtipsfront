@@ -2,20 +2,17 @@
 
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import {
-  Building2,
-  Check,
-  Copy,
-  CreditCard,
-  Download,
-  Info,
-  QrCode,
-  Shield,
-  Clock,
-  Zap,
-  User,
-} from "lucide-react"
+import { Download, RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  CopyButton,
+  Notice,
+  PageHeader,
+  PageShell,
+  Panel,
+  primaryButton,
+  secondaryButton,
+} from "@/components/dashboard/page-kit"
 import { useAuth } from "@/app/context/AuthContext"
 import { authRequest } from "@/lib/auth-client"
 
@@ -49,7 +46,6 @@ function getProvisioningErrorMessage(
 
 export default function VirtualAccountPage() {
   const router = useRouter()
-  const [copiedField, setCopiedField] = useState<string | null>(null)
   const [testSender, setTestSender] = useState("Monnify Sandbox Tester")
   const [testAmount, setTestAmount] = useState("1500")
   const [isTestingDonation, setIsTestingDonation] = useState(false)
@@ -166,395 +162,199 @@ export default function VirtualAccountPage() {
 
   if (isCollectionPaused) {
     return (
-      <div data-tour="virtual-account-main" className="p-6 max-w-3xl">
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6">
-          <h1 className="text-2xl font-bold text-white">Virtual Account Paused</h1>
-          <p className="mt-3 text-sm text-amber-100">
-            Virtual-account donations are temporarily paused during payout migration. Existing balances are safe, and updates will be announced in your notifications.
-          </p>
-        </div>
-      </div>
+      <PageShell data-tour="virtual-account-main">
+        <PageHeader title="Virtual Account" />
+        <Notice tone="warning" title="Virtual account paused">
+          Virtual-account donations are temporarily paused during payout migration. Existing balances are safe, and updates will be announced in your notifications.
+        </Notice>
+      </PageShell>
     )
   }
 
-  const copyToClipboard = async (text: string, field: string) => {
-    await navigator.clipboard.writeText(text)
-    setCopiedField(field)
-    setTimeout(() => setCopiedField(null), 2000)
+  const hasAccount = Boolean(user?.virtualAccount?.accountNumber)
+  const accountStatus = String(user?.virtualAccount?.status || "").toLowerCase()
+  const allDetailsText = `Bank: ${accountData.bankName}\nAccount Number: ${accountData.accountNumber}\nAccount Name: ${accountData.accountName}`
+
+  const downloadAccountDetails = () => {
+    if (!hasAccount) return
+    const blob = new Blob([`${allDetailsText}\n`], { type: "text/plain;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `streamtip-account-${accountData.accountNumber}.txt`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   const accountFields = [
-    {
-      label: "Bank Name",
-      value: accountData.bankName,
-      field: "bank",
-      icon: Building2,
-      highlight: false,
-    },
-    {
-      label: "Account Number",
-      value: accountData.accountNumber,
-      field: "number",
-      icon: CreditCard,
-      highlight: true,
-    },
-    {
-      label: "Account Name",
-      value: accountData.accountName,
-      field: "name",
-      icon: User,
-      highlight: false,
-    },
+    { label: "Bank", value: accountData.bankName, field: "bank" },
+    { label: "Account number", value: accountData.accountNumber, field: "number" },
+    { label: "Account name", value: accountData.accountName, field: "name" },
   ]
 
   return (
     <>
-      <div data-tour="virtual-account-main" className="p-6 space-y-6 max-w-5xl">
-        <div>
-        <h1 className="text-2xl font-bold text-white">Virtual Account</h1>
-        <p className="text-zinc-400 mt-1">
-          {`Your ${providerLabel} ${providerAccountTypeLabel} for receiving donations`}
-        </p>
-        </div>
+      <PageShell data-tour="virtual-account-main">
+        <PageHeader
+          title="Virtual Account"
+          description={`Share these details so supporters can tip you by bank transfer. This is your ${providerLabel} ${providerAccountTypeLabel}.`}
+        />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-xl overflow-hidden">
-          <div className="px-6 py-5 border-b border-zinc-800 bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-purple-500/10">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/25">
-                <CreditCard className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">Account Details</h2>
-                <p className="text-sm text-zinc-500">Share with your viewers</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 space-y-4">
-            {accountFields.map(({ label, value, field, icon: Icon, highlight }) => (
-              <div
-                key={field}
-                className={cn(
-                  "relative flex items-center justify-between p-4 rounded-xl transition-all duration-300",
-                  "group hover:scale-[1.02]",
-                  highlight
-                    ? "bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/40 shadow-lg shadow-purple-500/10"
-                    : "bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600",
-                )}
-              >
-                {highlight && (
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 blur-xl opacity-50" />
-                )}
-
-                <div className="relative flex items-center gap-4">
-                  <div
+        <Panel
+          title="Account details"
+          description={hasAccount ? "Supporters send money to this account." : "Your account will appear here once it is provisioned."}
+          actions={
+            hasAccount ? (
+              <>
+                <CopyButton value={allDetailsText} label="Copy all details" copiedLabel="Copied all" className="h-9 px-3" />
+                <button type="button" onClick={downloadAccountDetails} className={cn(secondaryButton, "h-9 px-3 text-xs")}>
+                  <Download className="h-3.5 w-3.5" aria-hidden />
+                  Download
+                </button>
+              </>
+            ) : null
+          }
+        >
+          <dl className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.06] bg-zinc-950/40">
+            {accountFields.map(({ label, value, field }) => (
+              <div key={field} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <dt className="text-xs text-zinc-500">{label}</dt>
+                  <dd
                     className={cn(
-                      "p-2.5 rounded-lg",
-                      highlight ? "bg-gradient-to-br from-purple-500 to-pink-500" : "bg-zinc-700/50",
+                      "mt-0.5 truncate font-semibold text-white",
+                      field === "number" ? "font-mono text-2xl tracking-wider" : "text-base",
                     )}
                   >
-                    <Icon
-                      className={cn("h-5 w-5", highlight ? "text-white" : "text-zinc-400")}
-                    />
-                  </div>
-                  <div>
-                    <p className="text-xs text-zinc-500 uppercase tracking-wider">{label}</p>
-                    <p
-                      className={cn(
-                        "text-lg font-semibold mt-0.5",
-                        highlight
-                          ? "text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400"
-                          : "text-white",
-                      )}
-                    >
-                      {value}
-                    </p>
-                  </div>
+                    {value}
+                  </dd>
                 </div>
-                <button
-                  onClick={() => copyToClipboard(value, field)}
-                  className={cn(
-                    "relative p-2.5 rounded-lg transition-all duration-200",
-                    highlight
-                      ? "text-purple-400 hover:text-white hover:bg-purple-500/20"
-                      : "text-zinc-500 hover:text-white hover:bg-zinc-700",
-                  )}
-                  title={`Copy ${label}`}
-                >
-                  {copiedField === field ? (
-                    <Check className="h-5 w-5 text-emerald-400" />
-                  ) : (
-                    <Copy className="h-5 w-5" />
-                  )}
-                </button>
+                <CopyButton value={hasAccount ? value : ""} ariaLabel={`Copy ${label.toLowerCase()}`} />
               </div>
             ))}
-          </div>
+          </dl>
 
-          <div className="px-6 pb-6">
-            <button
-              onClick={() =>
-                copyToClipboard(
-                  `Bank: ${accountData.bankName}\nAccount Number: ${accountData.accountNumber}\nAccount Name: ${accountData.accountName}`,
-                  "all",
-                )
-              }
-              className={cn(
-                "w-full py-3.5 rounded-xl text-sm font-semibold transition-all duration-300",
-                "bg-gradient-to-r from-purple-500 to-pink-500 text-white",
-                "hover:from-purple-600 hover:to-pink-600 hover:shadow-lg hover:shadow-purple-500/25",
-                "active:scale-[0.98]",
-              )}
-            >
-              {copiedField === "all" ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Check className="h-4 w-4" />
-                  Copied All Details!
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <Copy className="h-4 w-4" />
-                  Copy All Details
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-xl overflow-hidden">
-          <div className="px-6 py-5 border-b border-zinc-800">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-zinc-800">
-                <QrCode className="h-5 w-5 text-zinc-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">Account Reference</h2>
-                <p className="text-sm text-zinc-500">{providerReferenceLabel}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6 flex flex-col items-center">
-            <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 space-y-4">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Reference</p>
-                <p className="mt-1 text-lg font-semibold text-white">
-                  {accountData.accountReference || "Not available"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Provider</p>
-                <p className="mt-1 text-sm text-zinc-300">{providerDescriptor}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Environment</p>
-                <p className="mt-1 text-sm text-zinc-300">
-                  {user?.virtualAccount?.environment || "live"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wide text-zinc-500">Status</p>
-                <p
-                  className={cn(
-                    "mt-1 text-sm",
-                    String(user?.virtualAccount?.status || "").toLowerCase() === "active"
-                      ? "text-emerald-400"
-                      : String(user?.virtualAccount?.status || "").toLowerCase() === "failed"
-                        ? "text-red-300"
-                        : "text-amber-300",
-                  )}
-                >
-                  {user?.virtualAccount?.status || "Awaiting registration"}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-sm text-zinc-500 mt-4 text-center">
-              This account is provisioned per registered user and can be reused across streams.
-            </p>
-
-            <button className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white bg-zinc-800/50 hover:bg-zinc-800 transition-colors">
-              <Download className="h-4 w-4" />
-              Download Account Details
-            </button>
-
-            {needsProvisioning ? (
-              <button
-                type="button"
-                onClick={retryProvisioning}
-                disabled={isProvisioning}
-                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          {needsProvisioning ? (
+            <div className="mt-4">
+              <Notice
+                tone={accountStatus === "failed" ? "error" : "warning"}
+                title={hasAccount ? "Your account needs to be refreshed" : "No virtual account yet"}
+                action={
+                  <button type="button" onClick={retryProvisioning} disabled={isProvisioning} className={cn(primaryButton, "h-9 px-3 text-xs")}>
+                    <RefreshCw className={cn("h-3.5 w-3.5", isProvisioning && "animate-spin")} aria-hidden />
+                    {isProvisioning ? "Provisioning..." : `Provision ${providerLabel} account`}
+                  </button>
+                }
               >
-                {isProvisioning ? "Provisioning..." : `Provision ${providerLabel} account`}
-              </button>
-            ) : null}
-
-            {provisionFeedback ? (
-              <div
-                className={cn(
-                  "mt-3 w-full rounded-xl border px-4 py-3 text-sm",
-                  provisionFeedback.type === "success"
-                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
-                    : "border-red-500/20 bg-red-500/10 text-red-200",
-                )}
-              >
-                {provisionFeedback.message}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-xl overflow-hidden">
-        <div className="px-6 py-5 border-b border-zinc-800 flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20">
-            <Info className="h-5 w-5 text-cyan-400" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-white">How Donations Work</h2>
-            <p className="text-sm text-zinc-500">Instructions for your viewers</p>
-          </div>
-        </div>
-
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-lg shadow-purple-500/25">
-                1
-              </div>
-              <div>
-                <h3 className="font-semibold text-white">Open Banking App</h3>
-                <p className="text-sm text-zinc-400 mt-1">
-                  Open your mobile banking app or USSD and choose transfer to bank.
-                </p>
-              </div>
+                Generate your {providerLabel} {providerAccountTypeLabel} so supporters can send tips.
+              </Notice>
             </div>
+          ) : null}
 
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-lg shadow-purple-500/25">
-                2
-              </div>
-              <div>
-                <h3 className="font-semibold text-white">Enter Details</h3>
-                <p className="text-sm text-zinc-400 mt-1">
-                  Enter the account number and select {accountData.bankName} as the bank.
-                </p>
-              </div>
+          {provisionFeedback ? (
+            <div className="mt-3">
+              <Notice tone={provisionFeedback.type === "success" ? "success" : "error"}>{provisionFeedback.message}</Notice>
             </div>
+          ) : null}
+        </Panel>
 
-            <div className="flex gap-4">
-              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-lg shadow-purple-500/25">
-                3
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1.4fr_1fr]">
+          <Panel title="How supporters tip you">
+            <ol className="space-y-3 text-sm">
+              {[
+                "Open a banking app (or USSD) and choose transfer to bank.",
+                `Enter the account number above and select ${accountData.bankName} as the bank.`,
+                `Complete the transfer. ${providerLabel} confirms it and the tip appears on your dashboard and overlay.`,
+              ].map((step, index) => (
+                <li key={step} className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-xs font-semibold text-purple-200">
+                    {index + 1}
+                  </span>
+                  <span className="pt-0.5 text-zinc-300">{step}</span>
+                </li>
+              ))}
+            </ol>
+          </Panel>
+
+          <Panel title="Technical details" description={providerReferenceLabel}>
+            <dl className="space-y-3 text-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <dt className="text-xs text-zinc-500">Reference</dt>
+                  <dd className="mt-0.5 break-all font-mono text-xs text-zinc-200">{accountData.accountReference || "Not available"}</dd>
+                </div>
+                {accountData.accountReference && hasAccount ? (
+                  <CopyButton value={accountData.accountReference} label="Copy" ariaLabel="Copy account reference" />
+                ) : null}
               </div>
-              <div>
-                <h3 className="font-semibold text-white">Send & Appear on Stream</h3>
-                <p className="text-sm text-zinc-400 mt-1">
-                  {`Complete the transfer and your donation can be verified through ${providerLabel} webhooks.`}
-                </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <dt className="text-xs text-zinc-500">Provider</dt>
+                  <dd className="mt-0.5 text-zinc-200">{providerDescriptor}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500">Environment</dt>
+                  <dd className="mt-0.5 capitalize text-zinc-200">{user?.virtualAccount?.environment || "live"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-zinc-500">Status</dt>
+                  <dd
+                    className={cn(
+                      "mt-0.5 capitalize",
+                      accountStatus === "active" ? "text-emerald-300" : accountStatus === "failed" ? "text-red-300" : "text-amber-300",
+                    )}
+                  >
+                    {user?.virtualAccount?.status || "Awaiting registration"}
+                  </dd>
+                </div>
               </div>
-            </div>
-          </div>
+              <p className="text-xs text-zinc-500">One account per creator, reused across all your streams.</p>
+            </dl>
+          </Panel>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="flex items-center gap-3 p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl">
-          <div className="p-2 rounded-lg bg-emerald-500/10">
-            <Shield className="h-5 w-5 text-emerald-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white">Secure Payments</p>
-            <p className="text-xs text-zinc-500">{`Backed by ${providerLabel}`}</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl">
-          <div className="p-2 rounded-lg bg-cyan-500/10">
-            <Clock className="h-5 w-5 text-cyan-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white">Reserved Account</p>
-            <p className="text-xs text-zinc-500">Created per registered user</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 p-4 bg-zinc-900/50 border border-zinc-800 rounded-xl">
-          <div className="p-2 rounded-lg bg-purple-500/10">
-            <Zap className="h-5 w-5 text-purple-400" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white">Webhook Ready</p>
-            <p className="text-xs text-zinc-500">Donation alerts can sync live</p>
-          </div>
-        </div>
-      </div>
 
         {isSandboxAccount ? (
-        <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border border-zinc-800 rounded-xl overflow-hidden">
-          <div className="px-6 py-5 border-b border-zinc-800 flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20">
-              <Zap className="h-5 w-5 text-purple-400" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-white">Monnify Sandbox Donation Test</h2>
-              <p className="text-sm text-zinc-500">Create a safe test donation for this creator account.</p>
-            </div>
-          </div>
-
-          <div className="p-6 space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">Test sender name</label>
-                <input
-                  value={testSender}
-                  onChange={(event) => setTestSender(event.target.value)}
-                  className="w-full h-11 rounded-xl border border-zinc-800 bg-zinc-900 px-4 text-white outline-none transition-colors focus:border-purple-500"
-                  placeholder="Monnify Sandbox Tester"
-                />
+          <Panel title="Monnify sandbox donation test" description="Create a safe test donation for this creator account.">
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="sandbox-sender" className="text-sm font-medium text-zinc-300">Test sender name</label>
+                  <input
+                    id="sandbox-sender"
+                    value={testSender}
+                    onChange={(event) => setTestSender(event.target.value)}
+                    className="h-10 w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3 text-white outline-none transition-colors focus:border-purple-500"
+                    placeholder="Monnify Sandbox Tester"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="sandbox-amount" className="text-sm font-medium text-zinc-300">Test amount (NGN)</label>
+                  <input
+                    id="sandbox-amount"
+                    value={testAmount}
+                    onChange={(event) => setTestAmount(event.target.value)}
+                    type="number"
+                    min="1"
+                    className="h-10 w-full rounded-xl border border-white/10 bg-zinc-950/60 px-3 text-white outline-none transition-colors focus:border-purple-500"
+                    placeholder="1500"
+                  />
+                </div>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-300">Test amount (NGN)</label>
-                <input
-                  value={testAmount}
-                  onChange={(event) => setTestAmount(event.target.value)}
-                  type="number"
-                  min="1"
-                  className="w-full h-11 rounded-xl border border-zinc-800 bg-zinc-900 px-4 text-white outline-none transition-colors focus:border-purple-500"
-                  placeholder="1500"
-                />
-              </div>
+              <p className="text-sm text-zinc-500">
+                Uses StreamTip&apos;s sandbox donation endpoint so you can check totals, alerts and the OBS overlay while your Monnify account is in test mode.
+              </p>
+              {testFeedback ? (
+                <Notice tone={testFeedback.type === "success" ? "success" : "error"}>{testFeedback.message}</Notice>
+              ) : null}
+              <button type="button" onClick={runSandboxDonationTest} disabled={isTestingDonation} className={primaryButton}>
+                {isTestingDonation ? "Sending test donation..." : "Run Monnify test donation"}
+              </button>
             </div>
-
-            <p className="text-sm text-zinc-500">
-              This uses StreamTip&apos;s sandbox donation endpoint so you can verify dashboard totals, donations, alerts, and OBS overlay behavior while your Monnify account is still in test mode.
-            </p>
-
-            {testFeedback ? (
-              <div
-                className={cn(
-                  "rounded-xl border px-4 py-3 text-sm",
-                  testFeedback.type === "success"
-                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
-                    : "border-red-500/20 bg-red-500/10 text-red-200",
-                )}
-              >
-                {testFeedback.message}
-              </div>
-            ) : null}
-
-            <button
-              onClick={runSandboxDonationTest}
-              disabled={isTestingDonation}
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isTestingDonation ? "Sending test donation..." : "Run Monnify test donation"}
-            </button>
-          </div>
-        </div>
+          </Panel>
         ) : null}
-      </div>
+      </PageShell>
 
       {showVerifyBvnPrompt ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">

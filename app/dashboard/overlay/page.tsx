@@ -1,240 +1,810 @@
 "use client"
 
-import { useState } from "react"
-import { ObsConnectCard, OverlayUrlsCard } from "@/components/dashboard/obs-connect-card"
-import { OverlayFeatureControls, OverlayGradientControls } from "@/components/dashboard/overlay-scene-editor"
-import { VideoGuideCard } from "@/components/dashboard/video-guide-card"
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react"
+import Link from "next/link"
+import * as TabsPrimitive from "@radix-ui/react-tabs"
+import {
+  BookOpen,
+  CreditCard,
+  Crown,
+  ExternalLink,
+  ListOrdered,
+  RotateCcw,
+  Sigma,
+  Target,
+  Trophy,
+} from "lucide-react"
+import { useAuth } from "@/app/context/AuthContext"
 import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
-import { saveOverlayState } from "@/lib/overlay-state-client"
-import { setupTutorialGuide } from "@/lib/video-guides"
-import { Button } from "@/components/ui/button"
+import { VideoGuideCard } from "@/components/dashboard/video-guide-card"
+import {
+  CopyButton,
+  Notice,
+  PageHeader,
+  PageShell,
+  Panel,
+  focusRing,
+  secondaryButton,
+} from "@/components/dashboard/page-kit"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { Crown, ListOrdered, RotateCcw, Target } from "lucide-react"
+import {
+  DonationTotalCard,
+  formatNairaAmount,
+  useLiveDonationTotal,
+} from "@/components/donation-total-overlay"
+import { overlayLabelClass, overlayPanelClass } from "@/components/overlay-theme"
+import { getStreamerPublicAccountName } from "@/lib/account-display"
+import { getCreatorNickname } from "@/lib/nickname"
+import { resetOverlayDonationTotal, saveOverlayState } from "@/lib/overlay-state-client"
+import { getOverlayUrl, type OverlayUrlMode } from "@/lib/runtime-config"
+import { setupTutorialGuide } from "@/lib/video-guides"
+import { cn } from "@/lib/utils"
 
-function buildGoalGradient(color: string) {
-  return {
-    start: color,
-    middle: "#011B33",
-    end: color,
-  }
+const TABS = [
+  { id: "leaderboard", label: "Leaderboard", icon: Trophy },
+  { id: "goal", label: "Donation Goal", icon: Target },
+  { id: "account", label: "Account Card", icon: CreditCard },
+  { id: "total", label: "Donation Total", icon: Sigma },
+  { id: "setup", label: "Setup Guide", icon: BookOpen },
+] as const
+
+type TabId = (typeof TABS)[number]["id"]
+
+const SOURCE_SIZES: Record<Exclude<OverlayUrlMode, "full" | "gifts">, string> = {
+  leaderboard: "400 × 520",
+  goal: "780 × 160",
+  account: "400 × 220",
+  total: "420 × 160",
 }
 
-function isValidHexColor(value: string) {
-  return /^#[0-9a-fA-F]{6}$/.test(value)
+const GOAL_MIN = 1000
+const GOAL_MAX = 1_000_000_000
+
+const TabNavContext = createContext<(tab: TabId) => void>(() => {})
+
+function isTabId(value: string | null): value is TabId {
+  return TABS.some((tab) => tab.id === value)
 }
 
-export default function OverlaySettingsPage() {
+function validateGoalAmount(raw: string): { value?: number; error?: string } {
+  const cleaned = raw.replace(/[,\s]/g, "").replace(/^NGN/i, "").replace(/^₦/, "")
+  if (!cleaned) return { error: "Enter a goal amount." }
+  if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return { error: "Use numbers only, for example 250000." }
+  const value = Number(cleaned)
+  if (!Number.isFinite(value)) return { error: "Use numbers only, for example 250000." }
+  if (value <= 0) return { error: "The goal must be more than zero." }
+  if (value < GOAL_MIN) return { error: `The minimum goal is NGN ${GOAL_MIN.toLocaleString()}.` }
+  if (value > GOAL_MAX) return { error: `The maximum goal is NGN ${GOAL_MAX.toLocaleString()}.` }
+  return { value: Math.round(value) }
+}
+
+function formatDateTime(value: string) {
+  const date = value ? new Date(value) : null
+  if (!date || Number.isNaN(date.getTime())) return ""
+  return date.toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })
+}
+
+/* ---------- small building blocks ---------- */
+
+function OverlayUrlRow({ mode, label = "Overlay URL" }: { mode: OverlayUrlMode; label?: string }) {
+  const { user } = useAuth()
+  const goToTab = useContext(TabNavContext)
+  const url = user?.id ? getOverlayUrl(user, mode) : ""
+  const inputId = `overlay-url-${mode}`
+
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={inputId} className="text-sm font-medium text-zinc-300">
+        {label}
+      </label>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input
+          id={inputId}
+          readOnly
+          value={url || "Sign in to see your link"}
+          onFocus={(event) => event.currentTarget.select()}
+          className="h-9 min-w-0 border-zinc-800 bg-zinc-950 font-mono text-xs text-zinc-200"
+        />
+        <div className="flex gap-2">
+          <CopyButton value={url} label="Copy URL" ariaLabel={`Copy ${label}`} className="h-9 px-3" />
+          {url ? (
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(
+                "inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 px-3 text-xs font-medium text-zinc-200 hover:border-white/20 hover:text-white",
+                focusRing,
+              )}
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              Open
+            </a>
+          ) : null}
+        </div>
+      </div>
+      {mode !== "full" && mode !== "gifts" ? (
+        <p className="text-xs text-zinc-500">
+          Add it as a Browser Source, about {SOURCE_SIZES[mode]} px.{" "}
+          <button
+            type="button"
+            onClick={() => goToTab("setup")}
+            className={cn("underline underline-offset-2 hover:text-zinc-300", focusRing)}
+          >
+            Setup guide
+          </button>
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function ToggleRow({
+  id,
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  id: string
+  label: string
+  description?: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-white/[0.06] bg-zinc-950/60 px-4 py-3">
+      <div className="min-w-0">
+        <label htmlFor={id} className="text-sm font-medium text-white">
+          {label}
+        </label>
+        {description ? <p className="mt-0.5 text-xs text-zinc-500">{description}</p> : null}
+      </div>
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onChange}
+        className="data-[state=checked]:bg-purple-500"
+      />
+    </div>
+  )
+}
+
+function PreviewFrame({ children, note }: { children: ReactNode; note?: string }) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Preview</p>
+      <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[repeating-conic-gradient(#18181b_0%_25%,#111113_0%_50%)] bg-[length:16px_16px] p-4">
+        {children}
+      </div>
+      {note ? <p className="text-xs text-zinc-500">{note}</p> : null}
+    </div>
+  )
+}
+
+function ConfirmResetDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  confirmLabel,
+  onConfirm,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description: ReactNode
+  confirmLabel: string
+  onConfirm: () => void
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="border-zinc-800 bg-zinc-950 text-white">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm text-zinc-400">{description}</div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="border-zinc-700 bg-zinc-900 text-white hover:bg-zinc-800 hover:text-white">
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm} className="bg-white text-black hover:bg-zinc-200">
+            {confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+/* ---------- tabs ---------- */
+
+function LeaderboardTab() {
   const { customization, updateCustomization } = useOverlayCustomization()
-  const [resetState, setResetState] = useState<"idle" | "saving" | "saved">("idle")
-  const safeGoalColor = isValidHexColor(customization.goalColor)
-    ? customization.goalColor
-    : "#00C3F7"
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [resetState, setResetState] = useState<"idle" | "saving" | "saved" | "error">("idle")
 
-  const handleResetLeaderboard = async () => {
+  const handleReset = async () => {
     setResetState("saving")
-
     try {
       await saveOverlayState({ leaderboardResetAt: new Date().toISOString() })
       setResetState("saved")
-      window.setTimeout(() => {
-        setResetState("idle")
-      }, 2200)
+      window.setTimeout(() => setResetState("idle"), 2500)
     } catch {
-      setResetState("idle")
+      setResetState("error")
+    }
+  }
+
+  const modes = [
+    { id: "top5" as const, label: "Top 5", icon: ListOrdered },
+    { id: "champion" as const, label: "#1 only", icon: Crown },
+  ]
+
+  return (
+    <Panel title="Leaderboard" description="Your top gifters since the last leaderboard reset.">
+      <div className="space-y-5">
+        <ToggleRow
+          id="toggle-leaderboard"
+          label="Show leaderboard"
+          description="Hide it without removing the browser source."
+          checked={customization.showLeaderboard}
+          onChange={(checked) => updateCustomization("showLeaderboard", checked)}
+        />
+
+        <div className="space-y-1.5">
+          <p id="leaderboard-mode-label" className="text-sm font-medium text-zinc-300">
+            Layout
+          </p>
+          <div
+            role="radiogroup"
+            aria-labelledby="leaderboard-mode-label"
+            className="inline-grid grid-cols-2 rounded-xl border border-zinc-800 bg-zinc-950 p-1"
+            onKeyDown={(event) => {
+              if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+                event.preventDefault()
+                const next = customization.leaderboardDisplayMode === "top5" ? "champion" : "top5"
+                updateCustomization("leaderboardDisplayMode", next)
+                const target = event.currentTarget.querySelector<HTMLButtonElement>(`[data-mode="${next}"]`)
+                target?.focus()
+              }
+            }}
+          >
+            {modes.map((mode) => {
+              const active = customization.leaderboardDisplayMode === mode.id
+              const Icon = mode.icon
+              return (
+                <button
+                  key={mode.id}
+                  type="button"
+                  role="radio"
+                  data-mode={mode.id}
+                  aria-checked={active}
+                  tabIndex={active ? 0 : -1}
+                  onClick={() => updateCustomization("leaderboardDisplayMode", mode.id)}
+                  className={cn(
+                    "inline-flex h-9 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors",
+                    active ? "bg-zinc-800 text-white" : "text-zinc-400 hover:text-white",
+                    focusRing,
+                  )}
+                >
+                  <Icon className="h-4 w-4" aria-hidden />
+                  {mode.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <OverlayUrlRow mode="leaderboard" label="Leaderboard URL" />
+
+        <div className="flex flex-col gap-2 border-t border-white/[0.06] pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-zinc-500">
+            Resetting starts a fresh leaderboard. Donation history and earnings are not affected.
+          </p>
+          <button
+            type="button"
+            className={cn(secondaryButton, "h-9 shrink-0")}
+            disabled={resetState === "saving"}
+            onClick={() => setConfirmOpen(true)}
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden />
+            {resetState === "saving" ? "Resetting…" : resetState === "saved" ? "Leaderboard reset" : "Reset leaderboard"}
+          </button>
+        </div>
+        {resetState === "error" ? (
+          <Notice tone="error">Could not reset the leaderboard. Check your connection and try again.</Notice>
+        ) : null}
+      </div>
+
+      <ConfirmResetDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Reset the leaderboard?"
+        description={<p>The leaderboard overlay will start empty and count gifts from now on. Your donation history and earnings stay the same.</p>}
+        confirmLabel="Reset leaderboard"
+        onConfirm={() => void handleReset()}
+      />
+    </Panel>
+  )
+}
+
+function GoalTab() {
+  const { customization, updateCustomization } = useOverlayCustomization()
+  const [amountInput, setAmountInput] = useState(String(customization.goalAmount))
+  const [amountFocused, setAmountFocused] = useState(false)
+  const [amountError, setAmountError] = useState("")
+  const [savedFlash, setSavedFlash] = useState(false)
+
+  // Follow the saved value (e.g. after the server state loads) unless the creator is editing.
+  useEffect(() => {
+    if (!amountFocused) {
+      setAmountInput(String(customization.goalAmount))
+    }
+  }, [amountFocused, customization.goalAmount])
+
+  const commitAmount = () => {
+    const result = validateGoalAmount(amountInput)
+    if (result.error || result.value === undefined) {
+      setAmountError(result.error || "Enter a valid amount.")
+      return
+    }
+    setAmountError("")
+    setAmountInput(String(result.value))
+    if (result.value !== customization.goalAmount) {
+      updateCustomization("goalAmount", result.value)
+      setSavedFlash(true)
+      window.setTimeout(() => setSavedFlash(false), 2000)
     }
   }
 
   return (
-    <div data-tour="overlay-settings-main" className="max-w-7xl space-y-6 p-6 lg:p-8">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-white">Overlay Settings</h1>
-        <p className="text-zinc-500">
-          Control alert animations, sounds, desktop notifications, and preview mode across your dashboard and overlay tabs.
-        </p>
-      </div>
+    <Panel
+      title="Donation goal"
+      description="A progress bar toward a goal you set for the stream."
+    >
+      <div className="space-y-5">
+        <ToggleRow
+          id="toggle-goal"
+          label="Show goal"
+          checked={customization.showGoal}
+          onChange={(checked) => updateCustomization("showGoal", checked)}
+        />
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
-        <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Setup tutorial</p>
-            <h2 className="mt-2 text-lg font-semibold text-white">Need help connecting your overlay?</h2>
-            <p className="mt-1 text-sm leading-6 text-zinc-500">
-              Watch the quick setup video before copying your links into OBS or TikTok Studio.
+        <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
+          <div className="space-y-1.5">
+            <label htmlFor="goal-title" className="text-sm font-medium text-zinc-300">
+              Goal title
+            </label>
+            <Input
+              id="goal-title"
+              value={customization.goalTitle}
+              maxLength={80}
+              onChange={(event) => updateCustomization("goalTitle", event.target.value)}
+              placeholder="New gaming chair"
+              className="border-zinc-800 bg-zinc-950 text-white placeholder:text-zinc-500"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="goal-amount" className="text-sm font-medium text-zinc-300">
+              Goal amount (NGN)
+            </label>
+            <Input
+              id="goal-amount"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              value={amountInput}
+              aria-invalid={Boolean(amountError)}
+              aria-describedby="goal-amount-help"
+              onFocus={() => setAmountFocused(true)}
+              onChange={(event) => {
+                setAmountInput(event.target.value)
+                if (amountError) setAmountError("")
+              }}
+              onBlur={() => {
+                setAmountFocused(false)
+                commitAmount()
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault()
+                  commitAmount()
+                }
+              }}
+              className={cn(
+                "border-zinc-800 bg-zinc-950 text-white tabular-nums",
+                amountError && "border-red-500/70 focus-visible:ring-red-500/40",
+              )}
+            />
+            <p
+              id="goal-amount-help"
+              role={amountError ? "alert" : undefined}
+              className={cn("text-xs", amountError ? "text-red-400" : "text-zinc-500")}
+            >
+              {amountError
+                ? `${amountError} The overlay keeps NGN ${customization.goalAmount.toLocaleString()} until you fix it.`
+                : savedFlash
+                  ? "Saved."
+                  : `Minimum NGN ${GOAL_MIN.toLocaleString()}. Saves when you leave the field or press Enter.`}
             </p>
           </div>
-          <VideoGuideCard guide={setupTutorialGuide} compact />
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-5 rounded-xl border border-zinc-800 bg-zinc-900/80 p-5 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-white">Stream Leaderboard</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Reset old supporters or choose whether the live overlay shows all top gifters or only the champion.
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="grid grid-cols-2 rounded-xl border border-zinc-800 bg-zinc-950 p-1">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => updateCustomization("leaderboardDisplayMode", "top5")}
-              className={
-                customization.leaderboardDisplayMode === "top5"
-                  ? "bg-zinc-800 text-white hover:bg-zinc-800"
-                  : "text-zinc-400 hover:bg-zinc-900 hover:text-white"
-              }
-            >
-              <ListOrdered className="mr-2 h-4 w-4" />
-              Top 5
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => updateCustomization("leaderboardDisplayMode", "champion")}
-              className={
-                customization.leaderboardDisplayMode === "champion"
-                  ? "bg-amber-400 text-amber-950 hover:bg-amber-300"
-                  : "text-zinc-400 hover:bg-zinc-900 hover:text-white"
-              }
-            >
-              <Crown className="mr-2 h-4 w-4" />
-              #1 only
-            </Button>
-          </div>
-          <Button
-            type="button"
-            onClick={handleResetLeaderboard}
-            disabled={resetState === "saving"}
-            variant="outline"
-            className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            {resetState === "saving"
-              ? "Resetting..."
-              : resetState === "saved"
-                ? "Leaderboard reset"
-                : "Reset leaderboard"}
-          </Button>
-        </div>
-      </section>
-
-      <OverlayUrlsCard />
-
-      <OverlayGradientControls
-        customization={customization}
-        updateCustomization={updateCustomization}
-      />
-
-      <ObsConnectCard />
-
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/80 p-5">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="max-w-2xl">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-200">
-                <Target className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white">Donation Goal</h2>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Create a compact progress overlay for stream goals without covering the stream.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 xl:min-w-[260px]">
-            <div>
-              <p className="font-medium text-white">Enable Donation Goal</p>
-              <p className="text-sm text-zinc-500">Controls the goal overlay visibility.</p>
-            </div>
-            <Switch
-              checked={customization.showGoal}
-              onCheckedChange={(checked) => updateCustomization("showGoal", checked)}
-              className="data-[state=checked]:bg-cyan-500"
-            />
-          </div>
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_0.75fr_0.55fr]">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300">Goal Title</label>
-            <Input
-              value={customization.goalTitle}
-              onChange={(event) => updateCustomization("goalTitle", event.target.value)}
-              placeholder="Gaming Chair"
-              className="border-zinc-700 bg-zinc-950 text-white placeholder:text-zinc-500"
-            />
-          </div>
+        <ToggleRow
+          id="toggle-top-supporter"
+          label="Show top supporter"
+          description="Adds the leading gifter's name to the goal bar in the all-in-one overlay."
+          checked={customization.showTopSupporter}
+          onChange={(checked) => updateCustomization("showTopSupporter", checked)}
+        />
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300">Goal Amount (NGN)</label>
-            <Input
-              type="number"
-              min={1000}
-              step={500}
-              value={customization.goalAmount}
-              onChange={(event) => {
-                const amount = Number(event.target.value)
-                updateCustomization("goalAmount", Number.isFinite(amount) ? Math.max(1000, amount) : 1000)
-              }}
-              className="border-zinc-700 bg-zinc-950 text-white placeholder:text-zinc-500"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300">Goal Color</label>
-            <div className="flex items-center gap-3 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2">
-              <input
-                type="color"
-                value={safeGoalColor}
-                onChange={(event) => {
-                  updateCustomization("goalColor", event.target.value)
-                  updateCustomization("goalGradient", buildGoalGradient(event.target.value))
-                }}
-                className="h-9 w-10 rounded border-none bg-transparent"
-              />
-              <Input
-                value={customization.goalColor}
-                onChange={(event) => {
-                  updateCustomization("goalColor", event.target.value)
-                  if (isValidHexColor(event.target.value)) {
-                    updateCustomization("goalGradient", buildGoalGradient(event.target.value))
-                  }
-                }}
-                className="border-none bg-transparent p-0 text-white shadow-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-5 max-w-3xl rounded-xl border border-white/10 bg-black/20 p-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{customization.goalTitle || "Donation Goal"}</p>
-              <p className="mt-1 text-xs text-zinc-400">
-                NGN 0 / NGN {Number(customization.goalAmount || 0).toLocaleString()}
+        <PreviewFrame note="Progress fills from real donations once the overlay is live.">
+          <div className={cn(overlayPanelClass, "max-w-xl px-4 py-3")}>
+            <p className={overlayLabelClass}>Stream Goal</p>
+            <div className="mt-1 flex items-baseline justify-between gap-3">
+              <p className="truncate text-sm font-bold text-white">{customization.goalTitle || "Donation goal"}</p>
+              <p className="shrink-0 text-xs text-zinc-400 tabular-nums">
+                Goal NGN {customization.goalAmount.toLocaleString()}
               </p>
             </div>
-            <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white">
-              Preview
-            </span>
+            <div className="mt-2 h-2.5 rounded-full border border-white/10 bg-white/[0.04]" />
           </div>
-          <div className="mt-3 h-2 rounded-full bg-zinc-800">
-            <div
-              className="h-full w-1/3 rounded-full"
-              style={{ background: safeGoalColor }}
-            />
-          </div>
-        </div>
-      </section>
+        </PreviewFrame>
 
-      <OverlayFeatureControls
-        customization={customization}
-        updateCustomization={updateCustomization}
+        <OverlayUrlRow mode="goal" label="Donation goal URL" />
+      </div>
+    </Panel>
+  )
+}
+
+function AccountTab() {
+  const { customization, updateCustomization } = useOverlayCustomization()
+  const { user } = useAuth()
+  const nickname = getCreatorNickname(user)
+  const accountName = getStreamerPublicAccountName(user)
+  const accountNumber = user?.virtualAccount?.accountNumber || ""
+
+  return (
+    <Panel title="Account card" description="Shows viewers the account number they can send tips to.">
+      <div className="space-y-5">
+        <ToggleRow
+          id="toggle-account"
+          label="Show account card"
+          checked={customization.showAccountDetails}
+          onChange={(checked) => updateCustomization("showAccountDetails", checked)}
+        />
+
+        {user && !nickname ? (
+          <Notice
+            tone="warning"
+            action={
+              <Link href="/dashboard/settings" className="text-sm font-medium text-white underline underline-offset-4">
+                Add nickname
+              </Link>
+            }
+          >
+            The card shows your account name because you haven&apos;t set a creator nickname.
+          </Notice>
+        ) : null}
+
+        {accountNumber ? (
+          <PreviewFrame>
+            <div className={cn(overlayPanelClass, "w-full max-w-[340px] px-5 py-4")}>
+              <p className={overlayLabelClass}>Virtual Account</p>
+              {nickname ? (
+                <>
+                  <p className="mt-2 truncate text-2xl font-black leading-tight text-white">{nickname}</p>
+                  <p className="mt-1 truncate text-sm font-medium text-zinc-400">{accountName}</p>
+                </>
+              ) : (
+                <p className="mt-2 text-lg font-bold text-white">{accountName}</p>
+              )}
+              <p className="mt-2 font-mono text-2xl font-black tracking-[0.12em] text-white">{accountNumber}</p>
+              <p className="mt-2 truncate text-sm text-zinc-400">{user?.virtualAccount?.bankName || ""}</p>
+            </div>
+          </PreviewFrame>
+        ) : (
+          <Notice tone="info">The card appears on stream once your account number is ready.</Notice>
+        )}
+
+        <OverlayUrlRow mode="account" label="Account card URL" />
+      </div>
+    </Panel>
+  )
+}
+
+function TotalTab() {
+  const { user } = useAuth()
+  const { customization, updateCustomization } = useOverlayCustomization()
+  const { total, status, applyReset } = useLiveDonationTotal(user?.id ? String(user.id) : "")
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [resetState, setResetState] = useState<"idle" | "saving" | "saved" | "error">("idle")
+
+  const handleReset = useCallback(async () => {
+    setResetState("saving")
+    try {
+      const next = await resetOverlayDonationTotal()
+      applyReset(next)
+      setResetState("saved")
+      window.setTimeout(() => setResetState("idle"), 2500)
+    } catch {
+      setResetState("error")
+    }
+  }, [applyReset])
+
+  const lastReset = total?.resetAt ? formatDateTime(total.resetAt) : ""
+
+  return (
+    <Panel
+      title="Donation total"
+      description="A running total of donations received since your last reset."
+    >
+      <div className="space-y-5">
+        <PreviewFrame
+          note={
+            status === "error"
+              ? "Couldn't load the current total. It will retry automatically."
+              : total
+                ? `${total.count.toLocaleString()} donation${total.count === 1 ? "" : "s"} counted${lastReset ? ` since ${lastReset}` : " so far"}.`
+                : undefined
+          }
+        >
+          <DonationTotalCard
+            total={total}
+            status={status}
+            showSubtitle={customization.showDonationTotalSubtitle}
+          />
+        </PreviewFrame>
+
+        <ToggleRow
+          id="toggle-total-subtitle"
+          label={'Show "This stream" label'}
+          description="Shown under the amount on the overlay."
+          checked={customization.showDonationTotalSubtitle}
+          onChange={(checked) => updateCustomization("showDonationTotalSubtitle", checked)}
+        />
+
+        <OverlayUrlRow mode="total" label="Donation total URL" />
+
+        <div className="flex flex-col gap-2 border-t border-white/[0.06] pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-zinc-500">
+            Reset at the start of each stream. Only this overlay&apos;s total goes back to zero.
+          </p>
+          <button
+            type="button"
+            className={cn(secondaryButton, "h-9 shrink-0")}
+            disabled={resetState === "saving" || !user?.id}
+            onClick={() => setConfirmOpen(true)}
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden />
+            {resetState === "saving" ? "Resetting…" : resetState === "saved" ? "Total reset" : "Reset total"}
+          </button>
+        </div>
+        {resetState === "error" ? (
+          <Notice tone="error">Could not reset the total. Nothing was changed. Try again.</Notice>
+        ) : null}
+      </div>
+
+      <ConfirmResetDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Reset the donation total?"
+        description={
+          <>
+            <p>
+              The Donation Total overlay will go back to NGN 0
+              {total ? ` (currently NGN ${formatNairaAmount(total.amount)})` : ""} and count new donations from now.
+            </p>
+            <p>Your donation history, earnings, payouts and leaderboard are not changed.</p>
+          </>
+        }
+        confirmLabel="Reset total"
+        onConfirm={() => void handleReset()}
       />
+    </Panel>
+  )
+}
+
+function SetupGuideTab() {
+  const { customization, updateCustomization } = useOverlayCustomization()
+
+  const steps: Array<{ title: string; body: ReactNode }> = [
+    { title: "Pick an overlay", body: "Open its tab here and turn it on." },
+    { title: "Copy its URL", body: "Each overlay has its own link, so you can place them separately." },
+    {
+      title: "Add a browser source",
+      body: (
+        <>
+          <span className="font-medium text-zinc-200">OBS:</span> Sources → + → Browser, then paste the URL.{" "}
+          <span className="font-medium text-zinc-200">TikTok LIVE Studio:</span> Add source → Link (browser source),
+          then paste the URL.
+        </>
+      ),
+    },
+    { title: "Set the size", body: "Use the sizes below, then drag the source where you want it." },
+    {
+      title: "Keep it active",
+      body: "Leave the source visible. In OBS, turn off “Shutdown source when not visible” so it keeps updating.",
+    },
+  ]
+
+  const sizes: Array<{ label: string; size: string }> = [
+    { label: "Leaderboard", size: SOURCE_SIZES.leaderboard },
+    { label: "Donation goal", size: SOURCE_SIZES.goal },
+    { label: "Account card", size: SOURCE_SIZES.account },
+    { label: "Donation total", size: SOURCE_SIZES.total },
+    { label: "Gift alerts / all-in-one", size: "1920 × 1080 (your canvas size)" },
+  ]
+
+  const troubleshooting = [
+    ["Source is blank", "Check the whole URL was pasted, then refresh the source (OBS: right-click → Refresh)."],
+    ["Not updating", "Make sure the source is visible and your internet is on. It reconnects on its own."],
+    ["Shows another creator", "Copy the URL again from this page while signed in to your account."],
+    ["Text is cut off", "Make the browser source wider or taller."],
+    ["Total didn’t reset", "Wait a few seconds or refresh the source. Resets are saved on our server."],
+  ]
+
+  return (
+    <div className="space-y-5">
+      <Panel title="Add an overlay to your stream">
+        <ol className="space-y-3">
+          {steps.map((step, index) => (
+            <li key={step.title} className="flex gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.08] text-xs font-semibold text-zinc-200">
+                {index + 1}
+              </span>
+              <div className="min-w-0 text-sm">
+                <p className="font-medium text-white">{step.title}</p>
+                <p className="mt-0.5 text-zinc-400">{step.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </Panel>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Panel title="Recommended sizes" description="Width × height in pixels.">
+          <dl className="divide-y divide-white/[0.06] text-sm">
+            {sizes.map((item) => (
+              <div key={item.label} className="flex items-center justify-between gap-3 py-2">
+                <dt className="text-zinc-400">{item.label}</dt>
+                <dd className="text-right font-medium text-white tabular-nums">{item.size}</dd>
+              </div>
+            ))}
+          </dl>
+        </Panel>
+
+        <Panel title="Troubleshooting">
+          <dl className="space-y-3 text-sm">
+            {troubleshooting.map(([problem, fix]) => (
+              <div key={problem}>
+                <dt className="font-medium text-white">{problem}</dt>
+                <dd className="mt-0.5 text-zinc-400">{fix}</dd>
+              </div>
+            ))}
+          </dl>
+        </Panel>
+      </div>
+
+      <Panel
+        title="Gift alerts and all-in-one overlay"
+        description="Gift alerts stay transparent until a donation arrives. The all-in-one link shows every enabled overlay in one source."
+      >
+        <div className="space-y-4">
+          <OverlayUrlRow mode="gifts" label="Gift alerts URL" />
+          <OverlayUrlRow mode="full" label="All-in-one URL" />
+          <ToggleRow
+            id="toggle-ambient"
+            label="Ambient background"
+            description="Soft motion behind the all-in-one overlay while waiting for gifts."
+            checked={customization.showAmbientScene}
+            onChange={(checked) => updateCustomization("showAmbientScene", checked)}
+          />
+        </div>
+      </Panel>
+
+      <Panel title="Setup video" description="A quick walkthrough of adding StreamTips to your stream.">
+        <VideoGuideCard guide={setupTutorialGuide} compact />
+      </Panel>
     </div>
+  )
+}
+
+/* ---------- page ---------- */
+
+export default function OverlaySettingsPage() {
+  const [tab, setTab] = useState<TabId>("leaderboard")
+
+  // Keep the selected tab in the URL (?tab=...) so it can be linked to and survives reloads.
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const fromUrl = new URLSearchParams(window.location.search).get("tab")
+      if (isTabId(fromUrl)) setTab(fromUrl)
+    }
+    syncFromUrl()
+    window.addEventListener("popstate", syncFromUrl)
+    return () => window.removeEventListener("popstate", syncFromUrl)
+  }, [])
+
+  const changeTab = useCallback((value: string) => {
+    if (!isTabId(value)) return
+    setTab(value)
+    const url = new URL(window.location.href)
+    url.searchParams.set("tab", value)
+    window.history.replaceState(window.history.state, "", url.toString())
+  }, [])
+
+  const goToTab = useCallback(
+    (value: TabId) => {
+      changeTab(value)
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    },
+    [changeTab],
+  )
+
+  return (
+    <TabNavContext.Provider value={goToTab}>
+    <PageShell data-tour="overlay-settings-main" className="max-w-4xl">
+      <PageHeader
+        title="Overlay Settings"
+        description="Choose what appears on your stream. Each overlay has its own link for OBS or TikTok LIVE Studio."
+      />
+
+      <TabsPrimitive.Root value={tab} onValueChange={changeTab} className="space-y-4">
+        <TabsPrimitive.List
+          aria-label="Overlay settings sections"
+          className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0"
+        >
+          {TABS.map((item) => {
+            const Icon = item.icon
+            return (
+              <TabsPrimitive.Trigger
+                key={item.id}
+                value={item.id}
+                className={cn(
+                  "inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-transparent px-3 text-sm font-medium text-zinc-400 transition-colors hover:text-white",
+                  "data-[state=active]:border-white/10 data-[state=active]:bg-white/[0.06] data-[state=active]:text-white",
+                  focusRing,
+                )}
+              >
+                <Icon className="h-4 w-4" aria-hidden />
+                {item.label}
+              </TabsPrimitive.Trigger>
+            )
+          })}
+        </TabsPrimitive.List>
+
+        <TabsPrimitive.Content value="leaderboard" className="outline-none">
+          <LeaderboardTab />
+        </TabsPrimitive.Content>
+        <TabsPrimitive.Content value="goal" className="outline-none">
+          <GoalTab />
+        </TabsPrimitive.Content>
+        <TabsPrimitive.Content value="account" className="outline-none">
+          <AccountTab />
+        </TabsPrimitive.Content>
+        <TabsPrimitive.Content value="total" className="outline-none">
+          <TotalTab />
+        </TabsPrimitive.Content>
+        <TabsPrimitive.Content value="setup" className="outline-none">
+          <SetupGuideTab />
+        </TabsPrimitive.Content>
+      </TabsPrimitive.Root>
+    </PageShell>
+    </TabNavContext.Provider>
   )
 }

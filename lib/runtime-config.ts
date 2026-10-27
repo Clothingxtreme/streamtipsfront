@@ -59,10 +59,10 @@ function slugifyOverlayName(value: string) {
   )
 }
 
-export type OverlayUrlMode = "full" | "gifts" | "goal" | "leaderboard" | "account"
+export type OverlayUrlMode = "full" | "gifts" | "goal" | "leaderboard" | "account" | "total"
 
 export function getOverlayUrl(
-  user?: { id?: string; name?: string; overlaySlug?: string } | null,
+  user?: { id?: string; name?: string; nickname?: string; overlaySlug?: string } | null,
   mode: OverlayUrlMode = "full",
 ) {
   const userId = String(user?.id || "").trim()
@@ -71,7 +71,10 @@ export function getOverlayUrl(
     return `${getSiteBaseUrl()}/overlay`
   }
 
-  const slug = String(user?.overlaySlug || slugifyOverlayName(user?.name || "")).trim()
+  // The slug is cosmetic (the overlay route only reads the creator id), so older links keep working.
+  const slug = String(
+    user?.overlaySlug || slugifyOverlayName(user?.nickname || user?.name || ""),
+  ).trim()
   const baseUrl = `${getSiteBaseUrl()}/overlay/${encodeURIComponent(slug)}/${encodeURIComponent(userId)}`
   return mode === "full" ? baseUrl : `${baseUrl}/${mode}`
 }

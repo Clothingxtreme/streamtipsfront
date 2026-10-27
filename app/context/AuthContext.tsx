@@ -33,6 +33,7 @@ type RegisterInput = {
   bankCode: string
   accountNumber: string
   referralCode?: string
+  nickname?: string
 }
 
 type LoginInput = {

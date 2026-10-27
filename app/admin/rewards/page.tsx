@@ -11,7 +11,7 @@ export default function AdminRewardsPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200/70">Admin controls</p>
         <h1 className="mt-2 text-3xl font-black text-white">Creator fee rewards disabled</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-400">
-          Milestone rewards, referral fee reductions, and automatic Monnify platform split updates have been turned off. Every creator remains on the standard 20% platform fee.
+          Milestone rewards, referral fee reductions, and automatic Monnify platform split updates have been turned off. Every creator remains on the standard 10% platform fee.
         </p>
       </div>
 

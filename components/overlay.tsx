@@ -21,7 +21,14 @@ import {
 } from "@/lib/overlay-state-client"
 import { getPublicDonorDisplayName } from "@/lib/donor-display"
 import { getStreamerPublicAccountName } from "@/lib/account-display"
-import type { OverlayAnchor, OverlayGradientConfig, PositionedOverlayObject } from "@/lib/overlay-customization"
+import { getCreatorNickname } from "@/lib/nickname"
+import type { OverlayAnchor, PositionedOverlayObject } from "@/lib/overlay-customization"
+import {
+  OVERLAY_ACCENT_COLOR,
+  OVERLAY_NEUTRAL_ALERT_GRADIENT,
+  overlayLabelClass,
+  overlayPanelClass,
+} from "@/components/overlay-theme"
 import { cn } from "@/lib/utils"
 import type { AppUser } from "@/lib/user"
 
@@ -169,16 +176,6 @@ function overlayPositionStyle(position: PositionedOverlayObject, extraOffsetY = 
   }
 }
 
-function overlayGradientStyle(gradient: OverlayGradientConfig) {
-  return {
-    background: `linear-gradient(135deg, ${gradient.start}, ${gradient.middle}, ${gradient.end})`,
-  }
-}
-
-function safeHexColor(value: string | undefined) {
-  return value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : "#00C3F7"
-}
-
 function parseDonationAmount(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value
@@ -321,7 +318,8 @@ export default function Overlay({
   const settings = publicState?.settings || storedSettings
   const customization = publicState?.customization || storedCustomization
   const customGifts = publicState?.customGifts || storedCustomGifts
-  const goalColor = safeHexColor(customization.goalColor)
+  // Fixed overlay theme: legacy goalColor / gradients / opacity values are kept in storage but not rendered.
+  const goalColor = OVERLAY_ACCENT_COLOR
   const showGiftLayer = mode === "full" || mode === "gifts"
   const showGoalLayer = mode === "full" || mode === "goal"
   const showLeaderboardLayer = mode === "full" || mode === "leaderboard"
@@ -329,6 +327,7 @@ export default function Overlay({
   const canPlayGiftAudio = mode === "full" || mode === "gifts"
   const showIdleStage = mode === "full"
   const publicAccountName = getStreamerPublicAccountName(user)
+  const creatorNickname = getCreatorNickname(user)
   const topSupporter = useMemo(
     () => [...contributors].sort((a, b) => b.amount - a.amount)[0] || null,
     [contributors],
@@ -838,9 +837,9 @@ export default function Overlay({
     <div className="fixed inset-0 overflow-hidden bg-transparent text-white">
       {showIdleStage && customization.showAmbientScene ? (
         <div className="absolute inset-0">
-          <div className="absolute left-[8%] top-[15%] h-40 w-40 rounded-full bg-fuchsia-400/12 blur-3xl" />
-          <div className="absolute right-[10%] top-[10%] h-48 w-48 rounded-full bg-sky-400/12 blur-3xl" />
-          <div className="absolute bottom-[12%] left-[16%] h-44 w-44 rounded-full bg-amber-300/10 blur-3xl" />
+          <div className="absolute left-[8%] top-[15%] h-40 w-40 rounded-full bg-white/[0.04] blur-3xl" />
+          <div className="absolute right-[10%] top-[10%] h-48 w-48 rounded-full bg-white/[0.04] blur-3xl" />
+          <div className="absolute bottom-[12%] left-[16%] h-44 w-44 rounded-full bg-white/[0.03] blur-3xl" />
 
           {Array.from({ length: 16 }).map((_, index) => (
             <motion.div
@@ -864,27 +863,22 @@ export default function Overlay({
         {showGoalLayer && customization.showGoal ? (
           <div
             className={cn(
-              "absolute z-20 w-[min(720px,calc(100vw-32px))] rounded-[22px] border border-white/14 px-4 py-3 shadow-[0_0_34px_rgba(34,211,238,0.08)] backdrop-blur-xl",
+              overlayPanelClass,
+              "absolute z-20 w-[min(720px,calc(100vw-32px))] px-4 py-3",
               getAnchorClass(customization.goalPosition.anchor),
             )}
-            style={{
-              ...overlayGradientStyle(customization.goalGradient),
-              opacity: customization.goalOpacity,
-              ...overlayPositionStyle(customization.goalPosition),
-            }}
+            style={overlayPositionStyle(customization.goalPosition)}
           >
             <div className="mb-2 flex items-center justify-between gap-4">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/65">
-                  Stream Goal
-                </p>
+                <p className={overlayLabelClass}>Stream Goal</p>
                 <p className="text-base font-bold text-white">{customization.goalTitle}</p>
               </div>
               {mode === "full" && customization.showTopSupporter && topSupporter ? (
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/14 bg-black/15 px-4 py-2 text-sm text-white/88">
-                  <Crown className="h-4 w-4 text-yellow-300" />
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white">
+                  <Crown className="h-4 w-4 text-zinc-300" />
                   <span className="font-semibold">{topSupporter.name}</span>
-                  <span className="text-white/60">leading</span>
+                  <span className="text-zinc-400">leading</span>
                 </div>
               ) : null}
             </div>
@@ -908,45 +902,41 @@ export default function Overlay({
             )}
             style={overlayPositionStyle(customization.leaderboardPosition)}
           >
-            <div
-              className="rounded-[30px] p-[1px]"
-              style={{
-                ...overlayGradientStyle(customization.leaderboardGradient),
-                opacity: customization.leaderboardOpacity,
-              }}
-            >
-              <div className="rounded-[30px] bg-black/28 p-1 backdrop-blur-xl">
-                <Leaderboard
-                  contributors={contributors}
-                  maxItems={customization.leaderboardDisplayMode === "champion" ? 1 : 5}
-                />
-              </div>
-            </div>
+            <Leaderboard
+              contributors={contributors}
+              maxItems={customization.leaderboardDisplayMode === "champion" ? 1 : 5}
+            />
           </div>
         ) : null}
 
         {showAccountLayer && customization.showAccountDetails && user?.virtualAccount?.accountNumber ? (
           <div
             className={cn(
-              "absolute z-20 w-[340px] rounded-[28px] border border-white/14 px-5 py-4 text-white shadow-[0_0_40px_rgba(0,0,0,0.12)] backdrop-blur-xl",
+              overlayPanelClass,
+              "absolute z-20 w-[340px] px-5 py-4",
               getAnchorClass(customization.accountPosition.anchor),
             )}
-            style={{
-              ...overlayGradientStyle(customization.accountGradient),
-              opacity: customization.accountOpacity,
-              ...overlayPositionStyle(customization.accountPosition),
-            }}
+            style={overlayPositionStyle(customization.accountPosition)}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-white/65">
-              Virtual Account
-            </p>
-            <p className="mt-2 text-lg font-bold text-white">
-              {publicAccountName}
-            </p>
+            <p className={overlayLabelClass}>Virtual Account</p>
+            {creatorNickname ? (
+              <>
+                <p className="mt-2 truncate text-2xl font-black leading-tight text-white" title={creatorNickname}>
+                  {creatorNickname}
+                </p>
+                <p className="mt-1 truncate text-sm font-medium text-zinc-400">
+                  {publicAccountName}
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-lg font-bold text-white">
+                {publicAccountName}
+              </p>
+            )}
             <p className="mt-2 font-mono text-2xl font-black tracking-[0.12em] text-white">
               {user.virtualAccount.accountNumber}
             </p>
-            <div className="mt-2 flex items-center justify-between gap-3 text-sm text-white/85">
+            <div className="mt-2 flex items-center justify-between gap-3 text-sm text-zinc-400">
               <span>{user.virtualAccount.bankName || "Paystack"}</span>
               <span>{user.virtualAccount.provider || "Paystack"}</span>
             </div>
@@ -972,7 +962,7 @@ export default function Overlay({
                   comboCount={0}
                   isVisible={showAlert}
                   giftPack={customization.giftPack}
-                  gradient={customization.alertGradient}
+                  gradient={OVERLAY_NEUTRAL_ALERT_GRADIENT}
                   customGifts={customGifts}
                 />
               </div>
@@ -981,9 +971,9 @@ export default function Overlay({
                 <motion.div
                   animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0.9, 0.5] }}
                   transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-                  className="mx-auto mb-5 flex h-28 w-28 items-center justify-center rounded-full border border-white/16 bg-white/8 backdrop-blur-md"
+                  className="mx-auto mb-5 flex h-28 w-28 items-center justify-center rounded-full border border-white/10 bg-[#0B0B0E]"
                 >
-                  <Sparkles className="h-10 w-10 text-fuchsia-200" />
+                  <Sparkles className="h-10 w-10 text-zinc-300" />
                 </motion.div>
                 <p className="text-sm font-semibold uppercase tracking-[0.36em] text-white/45">
                   Live Gift Overlay

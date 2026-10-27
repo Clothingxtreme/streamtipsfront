@@ -268,7 +268,7 @@ export default function PlatformWithdrawalsPage() {
       <div className="space-y-1">
         <h1 className="text-3xl font-black text-white">Platform Withdrawals</h1>
         <p className="text-zinc-400">
-          Record manual withdrawals from the platform 20% balance. This is bookkeeping only and does not send money through a transfer provider.
+          Record manual withdrawals from the platform fee balance. This is bookkeeping only and does not send money through a transfer provider.
         </p>
       </div>
 

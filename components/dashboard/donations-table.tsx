@@ -25,6 +25,17 @@ export interface Donation {
   provider?: string
 }
 
+/** Shared with the dashboard's recent-donations list so both use the same pending-review rule. */
+export function isDonationPendingReview(donation: Pick<Donation, "provider" | "paymentStatus" | "walletStatus" | "status">) {
+  const isPaidMonnifyDonation =
+    String(donation.provider || "").toLowerCase() === "monnify" &&
+    String(donation.paymentStatus || "").toUpperCase() === "PAID" &&
+    donation.walletStatus !== "rejected" &&
+    donation.status !== "failed"
+
+  return !isPaidMonnifyDonation && (donation.walletStatus === "pending_review" || donation.status === "pending")
+}
+
 interface DonationsTableProps {
   donations: Donation[]
   title?: string
@@ -74,14 +85,7 @@ export function DonationsTable({
               displayDonations.map((donation) => {
                 const donorName = donation.senderName || donation.sender || "Anonymous"
                 const amount = Number(donation.amount) || 0
-                const isPaidMonnifyDonation =
-                  String(donation.provider || "").toLowerCase() === "monnify" &&
-                  String(donation.paymentStatus || "").toUpperCase() === "PAID" &&
-                  donation.walletStatus !== "rejected" &&
-                  donation.status !== "failed"
-                const isPendingReview =
-                  !isPaidMonnifyDonation &&
-                  (donation.walletStatus === "pending_review" || donation.status === "pending")
+                const isPendingReview = isDonationPendingReview(donation)
 
                 return (
                   <TableRow key={donation._id} className="border-zinc-800">

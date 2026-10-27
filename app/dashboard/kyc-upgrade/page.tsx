@@ -663,19 +663,26 @@ export default function KycUpgradePage() {
 
   if (loading) {
     return (
-      <div data-tour="upgrade-tier-main" className="p-6 text-zinc-300">
+      <div data-tour="upgrade-tier-main" className="mx-auto flex w-full max-w-4xl items-center gap-2 p-4 text-sm text-zinc-400 sm:p-6 lg:p-8">
         <LoaderCircle className="h-5 w-5 animate-spin" />
+        Loading tier options...
       </div>
     )
   }
 
   if (!options) {
-    return <div data-tour="upgrade-tier-main" className="p-6 text-red-300">{error || "Could not load KYC options."}</div>
+    return (
+      <div data-tour="upgrade-tier-main" className="mx-auto w-full max-w-4xl p-4 sm:p-6 lg:p-8">
+        <div role="alert" className="rounded-xl border border-red-400/20 bg-red-500/[0.07] px-4 py-3 text-sm text-red-100">
+          {error || "Could not load KYC options."}
+        </div>
+      </div>
+    )
   }
 
   if (!nextTier) {
     return (
-      <div data-tour="upgrade-tier-main" className="p-6 max-w-3xl">
+      <div data-tour="upgrade-tier-main" className="mx-auto w-full max-w-4xl p-4 sm:p-6 lg:p-8">
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-emerald-100">
           You are already on Tier 4, the highest tier.
         </div>
@@ -684,9 +691,9 @@ export default function KycUpgradePage() {
   }
 
   return (
-    <div data-tour="upgrade-tier-main" className="p-6 max-w-4xl space-y-6">
+    <div data-tour="upgrade-tier-main" className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:p-6 lg:p-8">
       <div>
-        <h1 className="text-2xl font-bold text-white">Upgrade Tier</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Upgrade Tier</h1>
         <p className="mt-1 text-sm text-zinc-400">
           Tier {options.currentTier} to Tier {nextTier}
         </p>

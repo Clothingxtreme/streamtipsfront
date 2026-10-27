@@ -36,19 +36,52 @@ interface NavItem {
   tourKey: string
 }
 
-const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, tourKey: "dashboard" },
-  { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3, tourKey: "analytics" },
-  { label: "Donations", href: "/dashboard/donations", icon: History, tourKey: "donations" },
-  { label: "Earnings", href: "/dashboard/earnings", icon: Wallet, tourKey: "earnings" },
-  { label: "Virtual Account", href: "/dashboard/account", icon: CreditCard, tourKey: "virtual-account" },
-  { label: "Referrals", href: "/dashboard/rewards", icon: Link2, tourKey: "creator-referrals" },
-  { label: "Overlay Settings", href: "/dashboard/overlay", icon: Sparkles, tourKey: "overlay-settings" },
-  { label: "Create Custom Gift", href: "/dashboard/custom-gifts", icon: Wand2, tourKey: "custom-gift" },
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell, tourKey: "notifications" },
-  { label: "Upgrade Tier", href: "/dashboard/kyc-upgrade", icon: ShieldCheck, tourKey: "upgrade-tier" },
-  { label: "Settings", href: "/dashboard/settings", icon: Settings, tourKey: "settings" },
+// Same destinations, icons and tour keys as before, grouped so related pages sit together.
+const navGroups: Array<{ label: string; items: NavItem[] }> = [
+  {
+    label: "Overview",
+    items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, tourKey: "dashboard" }],
+  },
+  {
+    label: "Activity",
+    items: [
+      { label: "Donations", href: "/dashboard/donations", icon: History, tourKey: "donations" },
+      { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3, tourKey: "analytics" },
+    ],
+  },
+  {
+    label: "Money",
+    items: [
+      { label: "Earnings", href: "/dashboard/earnings", icon: Wallet, tourKey: "earnings" },
+      { label: "Virtual Account", href: "/dashboard/account", icon: CreditCard, tourKey: "virtual-account" },
+      { label: "Referrals", href: "/dashboard/rewards", icon: Link2, tourKey: "creator-referrals" },
+    ],
+  },
+  {
+    label: "Stream setup",
+    items: [
+      { label: "Overlay Settings", href: "/dashboard/overlay", icon: Sparkles, tourKey: "overlay-settings" },
+      { label: "Create Custom Gift", href: "/dashboard/custom-gifts", icon: Wand2, tourKey: "custom-gift" },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { label: "Upgrade Tier", href: "/dashboard/kyc-upgrade", icon: ShieldCheck, tourKey: "upgrade-tier" },
+      { label: "Notifications", href: "/dashboard/notifications", icon: Bell, tourKey: "notifications" },
+      { label: "Settings", href: "/dashboard/settings", icon: Settings, tourKey: "settings" },
+    ],
+  },
 ]
+
+function NavGroupLabel({ label, collapsed }: { label: string; collapsed?: boolean }) {
+  if (collapsed) {
+    return <div className="mx-3 my-2 h-px bg-zinc-800" aria-hidden />
+  }
+  return (
+    <p className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-600">{label}</p>
+  )
+}
 
 type DashboardSidebarProps = {
   mobileOpen: boolean
@@ -85,7 +118,7 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
             <Sparkles className="h-4 w-4 text-white" />
           </div>
-          <span className="text-sm font-semibold text-white">StreamTip</span>
+          <span className="text-sm font-semibold text-white">StreamTips</span>
         </div>
         <div className="h-9 w-9" />
       </div>
@@ -100,7 +133,7 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           {!collapsed && (
-            <span className="text-lg font-bold text-white">StreamTip</span>
+            <span className="text-lg font-bold text-white">StreamTips</span>
           )}
         </div>
 
@@ -119,31 +152,38 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
             </button>
           </VideoGuideLibraryButton>
 
-          {navItems.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                data-tour={item.tourKey}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                  "hover:bg-zinc-800/80",
-                  isActive 
-                    ? "bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-white border border-purple-500/30" 
-                    : "text-zinc-400 hover:text-white"
-                )}
-              >
-                <item.icon className={cn(
-                  "h-5 w-5 shrink-0",
-                  isActive && "text-purple-400"
-                )} />
-                {!collapsed && (
-                  <span className="text-sm font-medium">{item.label}</span>
-                )}
-              </Link>
-            )
-          })}
+          {navGroups.map((group) => (
+            <div key={group.label} role="group" aria-label={group.label} className="space-y-1">
+              <NavGroupLabel label={group.label} collapsed={collapsed} />
+              {group.items.map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    data-tour={item.tourKey}
+                    aria-current={isActive ? "page" : undefined}
+                    title={collapsed ? item.label : undefined}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200",
+                      "hover:bg-zinc-800/80 outline-none focus-visible:ring-2 focus-visible:ring-purple-400/60",
+                      isActive
+                        ? "bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-white border border-purple-500/30"
+                        : "text-zinc-400 hover:text-white"
+                    )}
+                  >
+                    <item.icon className={cn(
+                      "h-5 w-5 shrink-0",
+                      isActive && "text-purple-400"
+                    )} />
+                    {!collapsed && (
+                      <span className="text-sm font-medium">{item.label}</span>
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
 
           <button
             type="button"
@@ -224,7 +264,7 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500">
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
-                <span className="text-base font-semibold text-white">StreamTip</span>
+                <span className="text-base font-semibold text-white">StreamTips</span>
               </div>
               <button
                 type="button"
@@ -250,27 +290,33 @@ export function DashboardSidebar({ mobileOpen, onMobileOpenChange }: DashboardSi
                 </button>
               </VideoGuideLibraryButton>
 
-              {navItems.map((item) => {
-                const isActive = pathname === item.href
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    data-tour-mobile={item.tourKey}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                      "hover:bg-zinc-800/80",
-                      isActive
-                        ? "bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-white border border-purple-500/30"
-                        : "text-zinc-400 hover:text-white"
-                    )}
-                    onClick={() => onMobileOpenChange(false)}
-                  >
-                    <item.icon className={cn("h-5 w-5 shrink-0", isActive && "text-purple-400")} />
-                    <span className="text-sm font-medium">{item.label}</span>
-                  </Link>
-                )
-              })}
+              {navGroups.map((group) => (
+                <div key={group.label} role="group" aria-label={group.label} className="space-y-1">
+                  <NavGroupLabel label={group.label} />
+                  {group.items.map((item) => {
+                    const isActive = pathname === item.href
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        data-tour-mobile={item.tourKey}
+                        aria-current={isActive ? "page" : undefined}
+                        className={cn(
+                          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                          "hover:bg-zinc-800/80 outline-none focus-visible:ring-2 focus-visible:ring-purple-400/60",
+                          isActive
+                            ? "bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-white border border-purple-500/30"
+                            : "text-zinc-400 hover:text-white"
+                        )}
+                        onClick={() => onMobileOpenChange(false)}
+                      >
+                        <item.icon className={cn("h-5 w-5 shrink-0", isActive && "text-purple-400")} />
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+              ))}
 
               <button
                 type="button"

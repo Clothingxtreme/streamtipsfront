@@ -15,7 +15,7 @@ const sections = [
   {
     title: "Platform fee",
     body:
-      "StreamTip retains 20% of creator earnings generated through the platform as the service fee. This fee supports payment tooling, overlay technology, dashboard access, notifications, account management, and ongoing product operation.",
+      "StreamTip retains 10% of creator earnings generated through the platform as the service fee. This fee supports payment tooling, overlay technology, dashboard access, notifications, account management, and ongoing product operation.",
   },
   {
     title: "Payouts and balances",
@@ -101,7 +101,7 @@ export default function TermsPage() {
           <div className="flex items-start gap-3">
             <ShieldCheck className="mt-1 h-5 w-5 text-emerald-300" />
             <p className="text-sm leading-7 text-emerald-50/90">
-              Important commercial term: StreamTip retains 20% of creator earnings as the platform fee. If you do not agree with this fee structure, do not register or continue using the service.
+              Important commercial term: StreamTip retains 10% of creator earnings as the platform fee. If you do not agree with this fee structure, do not register or continue using the service.
             </p>
           </div>
         </div>

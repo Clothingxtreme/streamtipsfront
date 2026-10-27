@@ -24,7 +24,20 @@ function getInitialsFromParts(parts: unknown[]) {
     .join("")
 }
 
+const NICKNAME_INITIALS_MAX_LENGTH = 4
+
+/**
+ * Public account-card label ("Senscrypttech/XY"). Mirrors buildPublicStreamerAccountName in the
+ * backend: initials from the creator nickname first; accounts without a usable nickname fall back to
+ * legal-name initials (dashboard) or the label the server already computed (public overlays, which
+ * no longer receive legal names).
+ */
 export function getStreamerPublicAccountName(user: Partial<AppUser> | null | undefined) {
+  const nicknameInitials = getInitialsFromParts([user?.nickname]).slice(0, NICKNAME_INITIALS_MAX_LENGTH)
+  if (nicknameInitials) {
+    return `${PUBLIC_STREAMER_ACCOUNT_PREFIX}/${nicknameInitials}`
+  }
+
   const identity = user?.identity || {}
   const nameParts = [
     user?.firstName || identity.firstName,
