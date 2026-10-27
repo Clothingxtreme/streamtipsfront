@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   Bell,
-  CheckCircle2,
   MonitorSmartphone,
   Sparkles,
   Volume2,
@@ -12,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
+import { EmptyState, Notice, PageHeader, PageShell, Panel } from "@/components/dashboard/page-kit"
 import { useAppPreferences } from "@/app/context/AppPreferencesContext"
 import { authRequest } from "@/lib/auth-client"
 
@@ -199,151 +199,123 @@ export default function NotificationsPage() {
   ]
 
   return (
-    <div data-tour="notifications-main" className="max-w-6xl space-y-6 p-6 lg:p-8">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-white">Notifications</h1>
-        <p className="text-zinc-500">
-          Control browser alerts, event-specific notifications, and the sounds tied to them.
-        </p>
-      </div>
+    <PageShell data-tour="notifications-main">
+      <PageHeader
+        title="Notifications"
+        description="Account updates from StreamTip, and how you want to be alerted about tips and payouts."
+      />
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {summaryCards.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-zinc-500">{label}</p>
-              <div className="rounded-lg bg-zinc-800 p-2">
-                <Icon className="h-4 w-4 text-zinc-300" />
-              </div>
+          <div key={label} className="flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-zinc-900/60 px-3 py-2.5">
+            <Icon className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />
+            <div className="min-w-0">
+              <dt className="truncate text-xs text-zinc-500">{label}</dt>
+              <dd className="truncate text-sm font-medium capitalize text-white">{value}</dd>
             </div>
-            <p className="mt-4 text-lg font-semibold capitalize text-white">{value}</p>
           </div>
         ))}
-      </div>
+      </dl>
 
-      {statusMessage ? (
-        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-400" />
-            <span>{statusMessage}</span>
-          </div>
-        </div>
-      ) : null}
+      {statusMessage ? <Notice tone="success">{statusMessage}</Notice> : null}
 
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 overflow-hidden">
-        <div className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold text-white">Account Updates</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              KYC and tier-review updates appear here for approvals, rejections, and submissions.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs text-zinc-300">
-              Unread: {unreadCount}
+      <Panel
+        title="Account updates"
+        description="KYC and tier-review approvals, rejections and submissions."
+        actions={
+          <>
+            <span className="rounded-full border border-white/10 px-2.5 py-1 text-xs text-zinc-300">
+              {unreadCount} unread
             </span>
             <Button
               type="button"
               variant="outline"
+              size="sm"
               className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
               onClick={() => void markAllRead()}
               disabled={busyNotificationAction === "mark-all-read" || unreadCount <= 0}
             >
               Mark all read
             </Button>
+          </>
+        }
+      >
+        {loadingUpdates ? (
+          <div className="space-y-2" aria-label="Loading account updates">
+            {Array.from({ length: 2 }).map((_, index) => (
+              <div key={index} className="h-16 animate-pulse rounded-xl bg-white/[0.04] motion-reduce:animate-none" />
+            ))}
           </div>
-        </div>
-        <div className="p-4 sm:p-6">
-          {loadingUpdates ? (
-            <p className="text-sm text-zinc-400">Loading account updates...</p>
-          ) : accountNotifications.length ? (
-            <div className="space-y-3">
-              {accountNotifications.map((item) => {
-                const unread = !item.readAt
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      "rounded-2xl border px-4 py-3",
-                      unread ? "border-emerald-500/30 bg-emerald-500/10" : "border-zinc-800 bg-zinc-950/60",
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-white">{item.title || "Update"}</p>
-                        <p className="mt-1 text-sm text-zinc-300">{item.message || "No details provided."}</p>
-                        <p className="mt-2 text-xs text-zinc-500">{formatDate(item.createdAt)}</p>
-                      </div>
-                      {unread ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
-                          onClick={() => void markOneRead(item.id)}
-                          disabled={busyNotificationAction === `mark-read-${item.id}`}
-                        >
-                          Mark read
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-zinc-500">Read</span>
-                      )}
+        ) : accountNotifications.length ? (
+          <ul className="divide-y divide-white/[0.06]">
+            {accountNotifications.map((item) => {
+              const unread = !item.readAt
+              return (
+                <li key={item.id} className="flex items-start justify-between gap-3 py-3">
+                  <div className="flex min-w-0 gap-3">
+                    <span
+                      className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", unread ? "bg-purple-400" : "bg-transparent")}
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <p className={cn("font-medium", unread ? "text-white" : "text-zinc-300")}>
+                        {item.title || "Update"}
+                        {unread ? <span className="sr-only"> (unread)</span> : null}
+                      </p>
+                      <p className="mt-0.5 text-sm text-zinc-400">{item.message || "No details provided."}</p>
+                      <p className="mt-1 text-xs text-zinc-500">{formatDate(item.createdAt)}</p>
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-zinc-400">No account updates yet.</p>
-          )}
-        </div>
-      </section>
+                  {unread ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 border-zinc-700 bg-zinc-950 text-white hover:bg-zinc-900"
+                      onClick={() => void markOneRead(item.id)}
+                      disabled={busyNotificationAction === `mark-read-${item.id}`}
+                    >
+                      Mark read
+                    </Button>
+                  ) : (
+                    <span className="shrink-0 text-xs text-zinc-500">Read</span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <EmptyState title="No account updates yet">Approvals and review results will show up here.</EmptyState>
+        )}
+      </Panel>
 
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 overflow-hidden">
-        <div className="border-b border-zinc-800 px-6 py-4">
-          <h2 className="text-lg font-semibold text-white">Alert Channels</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            These settings save instantly and are used by live donation and payout events.
-          </p>
-        </div>
-
-        <div className="space-y-3 p-6">
+      <Panel title="Alert channels" description="Saved instantly and used for live tips and payout events.">
+        <ul className="divide-y divide-white/[0.06]">
           {notificationToggles.map(({ id, label, description, icon: Icon }) => {
             const enabled = preferences[id]
 
             return (
-              <div
-                key={id}
-                className={cn(
-                  "flex items-center justify-between gap-4 rounded-2xl p-4 transition-all",
-                  enabled
-                    ? "border border-purple-500/30 bg-purple-500/10"
-                    : "border border-zinc-800 bg-zinc-950/60",
-                )}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={cn("rounded-xl p-2.5", enabled ? "bg-purple-500/20" : "bg-zinc-800")}>
-                    <Icon className={cn("h-5 w-5", enabled ? "text-purple-300" : "text-zinc-500")} />
-                  </div>
-                  <div>
-                    <p className={cn("font-medium", enabled ? "text-white" : "text-zinc-300")}>
-                      {label}
-                    </p>
+              <li key={id} className="flex items-center justify-between gap-4 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Icon className={cn("h-5 w-5 shrink-0", enabled ? "text-purple-300" : "text-zinc-500")} aria-hidden />
+                  <div className="min-w-0">
+                    <p className="font-medium text-white">{label}</p>
                     <p className="text-sm text-zinc-500">{description}</p>
                   </div>
                 </div>
                 <Switch
                   checked={enabled}
+                  aria-label={label}
                   onCheckedChange={(checked) => {
                     void handleToggle(id, checked)
                   }}
                   className="data-[state=checked]:bg-purple-500"
                 />
-              </div>
+              </li>
             )
           })}
-        </div>
-      </section>
-
-    </div>
+        </ul>
+      </Panel>
+    </PageShell>
   )
 }

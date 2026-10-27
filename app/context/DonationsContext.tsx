@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react"
 import { io } from "socket.io-client"
 import { useAuth } from "@/app/context/AuthContext"
 import { readStoredAppPreferences } from "@/lib/app-preferences"
@@ -22,9 +22,14 @@ type Donation = {
   status?: string
 }
 
+export type DonationsLoadStatus = "idle" | "loading" | "ready" | "error"
+
 type DonationsContextType = {
   donations: Donation[]
   setDonations: Dispatch<SetStateAction<Donation[]>>
+  /** Load state of the /donations request. Additive; existing consumers can ignore it. */
+  status: DonationsLoadStatus
+  reloadDonations: () => void
 }
 
 const DonationsContext = createContext<DonationsContextType | null>(null)
@@ -50,6 +55,8 @@ const normalizeDonation = (donation: any): Donation => ({
 
 export const DonationsProvider = ({ children }: { children: ReactNode }) => {
   const [donations, setDonations] = useState<Donation[]>([])
+  const [status, setStatus] = useState<DonationsLoadStatus>("idle")
+  const fetchDonationsRef = useRef<(() => void) | null>(null)
   const { user, isAuthenticated, refreshUser } = useAuth()
   const userId = user?.id
 
@@ -76,21 +83,28 @@ export const DonationsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (!isAuthenticated || !userId) {
       setDonations([])
+      setStatus("idle")
+      fetchDonationsRef.current = null
       return
     }
 
     const fetchDonations = () => {
+      // Only show a loading state before the first successful load; later refreshes keep the current list.
+      setStatus((current) => (current === "ready" ? current : "loading"))
       void authRequest("/donations")
         .then((res) => res.json())
         .then((data) => {
           const fixed = Array.isArray(data) ? data.map((d: any) => normalizeDonation(d)) : []
           setDonations(fixed)
+          setStatus((current) => (Array.isArray(data) ? "ready" : current === "ready" ? current : "error"))
           void refreshUser()
         })
         .catch(() => {
           // silent - network/server error; current state is preserved
+          setStatus((current) => (current === "ready" ? current : "error"))
         })
     }
+    fetchDonationsRef.current = fetchDonations
 
     fetchDonations()
 
@@ -132,8 +146,12 @@ export const DonationsProvider = ({ children }: { children: ReactNode }) => {
     return () => {socket.disconnect()}
   }, [isAuthenticated, refreshUser, userId])
 
+  const reloadDonations = useCallback(() => {
+    fetchDonationsRef.current?.()
+  }, [])
+
   return (
-    <DonationsContext.Provider value={{ donations, setDonations }}>
+    <DonationsContext.Provider value={{ donations, setDonations, status, reloadDonations }}>
       {children}
     </DonationsContext.Provider>
   )

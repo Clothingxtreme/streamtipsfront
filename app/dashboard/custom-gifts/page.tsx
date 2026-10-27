@@ -280,14 +280,12 @@ export default function CustomGiftsPage() {
   }
 
   return (
-    <div data-tour="custom-gift-main" className="mx-auto max-w-7xl space-y-6 p-6 lg:p-8">
+    <div data-tour="custom-gift-main" className="mx-auto w-full max-w-6xl space-y-5 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-white">Create Custom Gift</h1>
-          <p className="max-w-3xl text-zinc-500">
-            Build your own gift ladder with compact preview scenes. Pick a gift name, the matching
-            animation look updates automatically, then set the amount range and save it for your
-            live overlay.
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Create Custom Gift</h1>
+          <p className="mt-1 max-w-2xl text-sm text-zinc-400">
+            Name a gift, set its amount range, and the matching animation plays on your overlay when a tip lands in that range.
           </p>
         </div>
 

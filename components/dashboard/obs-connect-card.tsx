@@ -46,7 +46,7 @@ export function OverlayUrlsCard() {
   const { user } = useAuth()
 
   return (
-    <section className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80">
+    <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-zinc-900/60">
       <div className="border-b border-zinc-800 px-5 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-200">
@@ -99,7 +99,7 @@ export function OverlayUrlsCard() {
 
 export function ObsConnectCard() {
   return (
-    <section className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80">
+    <section className="overflow-hidden rounded-2xl border border-white/[0.07] bg-zinc-900/60">
       <div className="border-b border-zinc-800 px-5 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500">

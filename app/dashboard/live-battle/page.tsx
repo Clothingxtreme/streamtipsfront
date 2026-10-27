@@ -170,7 +170,9 @@ export default function LiveBattleDashboard() {
     })
     socket.emit("battle_subscribe", { battleId: battle.battleId })
     socket.on("battle_updated", setBattle)
-    return () => socket.disconnect()
+    return () => {
+      socket.disconnect()
+    }
   }, [battle?.battleId])
 
   const runAction = async (path: string, init: RequestInit = {}, successMessage = "") => {
@@ -215,15 +217,14 @@ export default function LiveBattleDashboard() {
   }
 
   return (
-    <div className="space-y-6 p-6 lg:p-8">
+    <div className="mx-auto w-full max-w-6xl space-y-5 p-4 sm:p-6 lg:p-8">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-fuchsia-400/20 bg-fuchsia-400/10 px-4 py-2 text-sm text-fuchsia-100">
-            <Swords className="h-4 w-4" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-white">
+            <Swords className="h-5 w-5 text-fuchsia-300" aria-hidden />
             Live Battle
-          </div>
-          <h1 className="mt-4 text-3xl font-black text-white">Live Battle Dashboard</h1>
-          <p className="mt-2 max-w-3xl text-zinc-400">
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-zinc-400">
             Battle another StreamTips creator with real donations as the score. Built for TikTok LIVE co-host split-screen streams.
           </p>
         </div>

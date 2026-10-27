@@ -5,16 +5,11 @@ import { io } from "socket.io-client"
 import {
   ArrowDownToLine,
   ArrowRight,
-  BarChart3,
-  CalendarDays,
   CheckCircle2,
   Landmark,
   ShieldCheck,
-  TrendingUp,
-  Wallet,
   XCircle,
 } from "lucide-react"
-import { EarningsSummaryCard } from "@/components/dashboard/earnings-summary-card"
 import { EarningsChart } from "@/components/dashboard/earnings-chart"
 import type { Payout } from "@/components/dashboard/payouts-table"
 import { useAuth } from "@/app/context/AuthContext"
@@ -31,6 +26,7 @@ import { readStoredAppPreferences } from "@/lib/app-preferences"
 import { authRequest, getStoredSessionToken } from "@/lib/auth-client"
 import { emitNotificationFeedback } from "@/lib/notification-runtime"
 import { getSocketUrl } from "@/lib/runtime-config"
+import { MetricRow, Notice, PageHeader, PageShell, Panel, primaryButton } from "@/components/dashboard/page-kit"
 
 type Donation = {
   sender?: string
@@ -63,6 +59,11 @@ type WithdrawResult =
       description: string
     }
   | null
+
+/** Same output as the previous summary cards: "₦" + locale-formatted amount. */
+function formatNaira(amount: number) {
+  return `₦${(Number(amount) || 0).toLocaleString()}`
+}
 
 const MIN_WITHDRAWAL = 5000
 const CREATOR_SHARE_RATE = 0.8
@@ -670,86 +671,84 @@ export default function EarningsPage() {
   }, [donations])
 
   return (
-    <div data-tour="earnings-main" className="p-6 lg:p-8 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-white">Earnings</h1>
-          <p className="text-zinc-500">Track your income and manage payouts.</p>
-        </div>
+    <PageShell data-tour="earnings-main">
+      <PageHeader
+        title="Earnings"
+        description="What you've received and where it is in settlement."
+        actions={
+          showManualWithdrawal ? (
+            <button
+              type="button"
+              onClick={() => {
+                setWithdrawResult(null)
+                setShowWithdraw(true)
+              }}
+              className={primaryButton}
+            >
+              <ArrowDownToLine className="h-4 w-4" aria-hidden />
+              Withdraw Funds
+            </button>
+          ) : null
+        }
+      />
 
-        {showManualWithdrawal ? (
-          <Button
-            onClick={() => {
-              setWithdrawResult(null)
-              setShowWithdraw(true)
-            }}
-            className="h-11 px-5 bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white"
-          >
-            <ArrowDownToLine className="h-4 w-4" />
-            Withdraw Funds
-          </Button>
+      <Panel>
+        <MetricRow
+          metrics={[
+            {
+              label: "Donations received",
+              value: formatNaira(donationsReceived),
+              hint: "Your share, settled plus pending",
+            },
+            {
+              label: "Pending settlement",
+              value: formatNaira(pendingReviewBalance),
+              hint: "Clears at the next 10:00pm window",
+              tone: pendingReviewBalance > 0 ? "warning" : "muted",
+            },
+            {
+              label: "Settled",
+              value: formatNaira(confirmedSettledEarnings),
+              hint: "Sent to your bank account",
+              tone: "positive",
+            },
+          ]}
+        />
+      </Panel>
+
+      <Notice>
+        Gifts received after 9:50pm stay pending until the next day&apos;s 10:00pm clearing. Amounts are your share
+        after the platform fee; Monnify VAT (1.61–2.02%) is deducted from it before it reaches your bank. Older pending
+        records outside the active window are not counted here.
+      </Notice>
+
+      <Panel title="Recent periods" description="Your net earnings, compared with the previous period.">
+        <MetricRow
+          metrics={[
+            {
+              label: "Today",
+              value: formatNaira(dailyEarnings),
+              hint: `Yesterday: ${formatNaira(previousDayEarnings)}`,
+            },
+            {
+              label: "This week",
+              value: formatNaira(weeklyEarnings),
+              hint: `Last week: ${formatNaira(previousWeekEarnings)}`,
+            },
+            {
+              label: "This month",
+              value: formatNaira(monthlyEarnings),
+              hint: `Last month: ${formatNaira(previousMonthEarnings)}`,
+            },
+          ]}
+        />
+      </Panel>
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        {weeklyData.length > 0 ? (
+          <EarningsChart data={weeklyData} title="Settled earnings by weekday" />
         ) : null}
-      </div>
-
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 sm:p-5">
-        <p className="text-sm text-zinc-300">
-          Pending Settlement follows the active 10:00pm clearing window. Gifts received after
-          9:50pm stay pending until the next day&apos;s 10:00pm clearing.
-        </p>
-        <p className="mt-2 text-xs text-zinc-500">
-          Stale pending records outside the active window are ignored on this page. StreamTip keeps 20% as the platform fee. Monnify V.A.T ranges from 1.61-2.02% and is deducted from the creator&apos;s 80% settlement before it reaches the bank.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        <EarningsSummaryCard
-          title="Donations Received"
-          amount={donationsReceived}
-          icon={Wallet}
-          accentColor="purple"
-          glowing
-        />
-        <EarningsSummaryCard
-          title="Pending Settlement"
-          amount={pendingReviewBalance}
-          icon={BarChart3}
-          accentColor="amber"
-        />
-        <EarningsSummaryCard
-          title="Settled"
-          amount={confirmedSettledEarnings}
-          icon={CheckCircle2}
-          accentColor="green"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <EarningsSummaryCard
-          title="Daily"
-          amount={dailyEarnings}
-          previousAmount={previousDayEarnings}
-          icon={CalendarDays}
-          accentColor="cyan"
-        />
-        <EarningsSummaryCard
-          title="Weekly"
-          amount={weeklyEarnings}
-          previousAmount={previousWeekEarnings}
-          icon={CalendarDays}
-          accentColor="amber"
-        />
-        <EarningsSummaryCard
-          title="Monthly"
-          amount={monthlyEarnings}
-          previousAmount={previousMonthEarnings}
-          icon={TrendingUp}
-          accentColor="purple"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {weeklyData.length > 0 && <EarningsChart data={weeklyData} title="Weekly Earnings" />}
-        <EarningsChart data={monthlyData} title="Monthly Breakdown" />
+        <EarningsChart data={monthlyData} title="Settled earnings by month" />
       </div>
 
       <Dialog
@@ -991,7 +990,7 @@ export default function EarningsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageShell>
   )
 }
 

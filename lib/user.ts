@@ -70,6 +70,8 @@ export interface PayoutProfile {
 export interface AppUser {
   id: string
   name: string
+  /** Public-facing creator nickname shown to supporters. Separate from legal names. */
+  nickname?: string
   firstName?: string
   middleName?: string
   lastName?: string

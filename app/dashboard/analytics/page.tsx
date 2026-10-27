@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import type { ElementType, ReactNode } from "react"
+import type { ReactNode } from "react"
 import {
   Area,
   AreaChart,
@@ -13,23 +13,11 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import {
-  BarChart3,
-  CalendarDays,
-  Clock3,
-  Crown,
-  Flame,
-  Medal,
-  Lightbulb,
-  PartyPopper,
-  Sparkles,
-  TrendingUp,
-  Users,
-  Wallet,
-} from "lucide-react"
+import { Sparkles } from "lucide-react"
 import { useDonations } from "@/app/context/DonationsContext"
 import { authRequest } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
+import { EmptyState, MetricRow, PageHeader, PageShell, Panel, formatNairaTick } from "@/components/dashboard/page-kit"
 
 type DonationLike = {
   amount: number | string
@@ -130,90 +118,39 @@ function biggest<T>(items: T[], score: (item: T) => number): T | null {
   return items.reduce((best, item) => (score(item) > score(best) ? item : best), items[0])
 }
 
-function StatCard({
-  label,
-  value,
-  helper,
-  icon: Icon,
-}: {
-  label: string
-  value: string
-  helper: string
-  icon: ElementType
-}) {
-  return (
-    <div className="rounded-xl bg-zinc-900/80 p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-zinc-500">{label}</p>
-          <p className="mt-2 text-2xl font-black text-white">{value}</p>
-        </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-cyan-200">
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-      <p className="mt-4 text-xs leading-5 text-zinc-500">{helper}</p>
-    </div>
-  )
-}
-
-function PersonalRecordCard({ record }: { record: PersonalRecord }) {
+function PersonalRecordTile({ record }: { record: PersonalRecord }) {
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl border p-5",
-        record.isNew
-          ? "border-amber-300/30 bg-gradient-to-br from-amber-300/14 via-zinc-900/90 to-fuchsia-500/10 shadow-[0_0_40px_rgba(251,191,36,0.08)]"
-          : "border-white/10 bg-zinc-900/80",
+        "rounded-xl border px-4 py-3",
+        record.isNew ? "border-amber-300/30 bg-amber-300/[0.06]" : "border-white/[0.06] bg-zinc-950/40",
       )}
     >
-      {record.isNew ? (
-        <div className="absolute right-0 top-0 h-24 w-24 bg-amber-300/10 blur-2xl" />
-      ) : null}
-      <div className="relative flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm text-zinc-500">{record.title}</p>
-          <p className="mt-2 text-2xl font-black text-white">{formatRecordValue(record)}</p>
-          <p className="mt-2 text-xs leading-5 text-zinc-500">{formatRecordDetail(record)}</p>
-        </div>
-        <div className={cn("flex h-11 w-11 items-center justify-center rounded-xl", record.isNew ? "bg-amber-300/15 text-amber-200" : "bg-white/5 text-zinc-300")}>
-          <Medal className="h-5 w-5" />
-        </div>
+      <div className="flex items-center justify-between gap-2">
+        <p className="truncate text-xs text-zinc-500">{record.title}</p>
+        {record.isNew ? (
+          <span className="shrink-0 rounded-full bg-amber-300/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
+            New
+          </span>
+        ) : null}
       </div>
-      {record.isNew ? (
-        <div className="relative mt-4 inline-flex items-center gap-2 rounded-full bg-amber-300/15 px-3 py-1 text-xs font-black text-amber-100">
-          <PartyPopper className="h-3.5 w-3.5" />
-          New Personal Record!
-        </div>
-      ) : null}
+      <p className="mt-1 text-lg font-semibold tabular-nums text-white">{formatRecordValue(record)}</p>
+      <p className="truncate text-xs text-zinc-500">{formatRecordDetail(record)}</p>
     </div>
   )
 }
 
-function InsightCard({ text, tone = "cyan" }: { text: string; tone?: "cyan" | "emerald" | "amber" | "purple" }) {
-  const tones = {
-    cyan: "border-cyan-400/20 bg-cyan-400/10 text-cyan-100",
-    emerald: "border-emerald-400/20 bg-emerald-400/10 text-emerald-100",
-    amber: "border-amber-400/20 bg-amber-400/10 text-amber-100",
-    purple: "border-purple-400/20 bg-purple-400/10 text-purple-100",
-  }
-
+function ChartShell({ title, description, empty, children }: { title: string; description?: string; empty?: boolean; children: ReactNode }) {
   return (
-    <div className={cn("rounded-xl border p-4", tones[tone])}>
-      <div className="flex gap-3">
-        <Sparkles className="mt-0.5 h-4 w-4 shrink-0" />
-        <p className="text-sm leading-6">{text}</p>
-      </div>
-    </div>
-  )
-}
-
-function ChartShell({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="rounded-xl bg-zinc-900/80 p-5">
-      <h2 className="text-lg font-bold text-white">{title}</h2>
-      <div className="mt-5 h-[280px]">{children}</div>
-    </div>
+    <Panel title={title} description={description}>
+      {empty ? (
+        <EmptyState title="No donation data yet">This chart fills in as supporters send tips.</EmptyState>
+      ) : (
+        <div className="h-[240px]" role="img" aria-label={`${title} chart`}>
+          {children}
+        </div>
+      )}
+    </Panel>
   )
 }
 
@@ -329,23 +266,22 @@ export default function AnalyticsPage() {
     const currentMonth = monthly.get(monthKey(now)) || { amount: 0, count: 0 }
     const previousMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     const previousMonth = monthly.get(monthKey(previousMonthDate)) || { amount: 0, count: 0 }
-    const growthAmountPercent = previousMonth.amount > 0
+    // Only compare months when the previous month actually had donations; otherwise there is nothing to compare.
+    const growthAmountPercent: number | null = previousMonth.amount > 0
       ? ((currentMonth.amount - previousMonth.amount) / previousMonth.amount) * 100
-      : currentMonth.amount > 0
-        ? 100
-        : 0
-    const growthDonationPercent = previousMonth.count > 0
+      : null
+    const growthDonationPercent: number | null = previousMonth.count > 0
       ? ((currentMonth.count - previousMonth.count) / previousMonth.count) * 100
-      : currentMonth.count > 0
-        ? 100
-        : 0
+      : null
 
     const weekdayAverage = weekday.reduce((total, item) => total + item.amount, 0) / Math.max(1, weekday.filter((item) => item.amount > 0).length)
     const bestWeekdayLift = bestWeekday && weekdayAverage > 0 ? ((bestWeekday.amount - weekdayAverage) / weekdayAverage) * 100 : 0
     const avgDonation = clean.length ? totalAmount / clean.length : 0
     const previousAverage = previousMonth.count ? previousMonth.amount / previousMonth.count : 0
-    const currentAverage = currentMonth.count ? currentMonth.amount / currentMonth.count : avgDonation
-    const avgDonationChange = previousAverage > 0 ? ((currentAverage - previousAverage) / previousAverage) * 100 : 0
+    // Compare this month's average only against a real previous-month average (no all-time fallback).
+    const currentAverage = currentMonth.count ? currentMonth.amount / currentMonth.count : 0
+    const avgDonationChange: number | null =
+      previousAverage > 0 && currentMonth.count > 0 ? ((currentAverage - previousAverage) / previousAverage) * 100 : null
 
     const last14Days = Array.from({ length: 14 }, (_, index) => {
       const date = new Date()
@@ -363,9 +299,11 @@ export default function AnalyticsPage() {
       bestWeekday && bestWeekdayLift > 0
         ? `${bestWeekday.fullLabel} generated ${Math.round(bestWeekdayLift)}% more donation value than your active-day average.`
         : "Your strongest weekday will appear after more donation activity.",
-      avgDonationChange
-        ? `Your average donation ${avgDonationChange > 0 ? "increased" : "dropped"} by ${Math.abs(Math.round(avgDonationChange))}% compared with the previous month.`
-        : "Your average donation is stable compared with the previous month.",
+      avgDonationChange === null
+        ? "Average-donation trends appear once you have donations in both this month and last month."
+        : Math.round(avgDonationChange) === 0
+          ? "Your average donation is about the same as last month."
+          : `Your average donation ${avgDonationChange > 0 ? "increased" : "dropped"} by ${Math.abs(Math.round(avgDonationChange))}% compared with last month.`,
       bestHour && bestHour.count
         ? `${bestHour.label} is your strongest earning hour, with ${formatCurrency(bestHour.amount)} received.`
         : "Your best earning hour will appear once donations start coming in.",
@@ -392,198 +330,182 @@ export default function AnalyticsPage() {
       topSupporter,
       growthAmountPercent,
       growthDonationPercent,
+      currentMonth,
+      previousMonth,
       insights,
     }
   }, [donations])
 
+  const hasData = analytics.clean.length > 0
+  const tooltipBox = "rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 shadow-xl"
+  const axisTick = { fill: "#71717a", fontSize: 12 }
+  const monthComparison =
+    analytics.growthAmountPercent === null || analytics.currentMonth.amount === 0
+      ? analytics.previousMonth.amount > 0
+        ? `Last month: ${formatCurrency(analytics.previousMonth.amount)}`
+        : "No donations last month to compare"
+      : `${formatPercent(analytics.growthAmountPercent)} vs last month (${formatCurrency(analytics.previousMonth.amount)})`
+
   return (
-    <div className="space-y-6 p-5 sm:p-6 lg:p-8">
-      <div className="max-w-4xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Creator performance</p>
-        <h1 className="mt-2 text-3xl font-black text-white">Analytics</h1>
-        <p className="mt-2 text-sm leading-6 text-zinc-400">
-          Spot your best times, strongest supporters, donation patterns, and growth signals without turning this into an accounting page.
-        </p>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Analytics"
+        description="When supporters give, how much, and who gives most. Based on your confirmed and pending donations."
+      />
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Best Day"
-          value={analytics.bestWeekday?.fullLabel || "Not enough data"}
-          helper={analytics.bestWeekday ? `${formatCurrency(analytics.bestWeekday.amount)} from ${formatNumber(analytics.bestWeekday.count)} donations.` : "Needs donation activity."}
-          icon={CalendarDays}
+      <Panel>
+        <MetricRow
+          metrics={[
+            { label: "Total received", value: formatCurrency(analytics.totalAmount), hint: `${formatNumber(analytics.clean.length)} donations` },
+            { label: "Average donation", value: hasData ? formatCurrency(analytics.avgDonation) : "—" },
+            {
+              label: "This month",
+              value: formatCurrency(analytics.currentMonth.amount),
+              hint: monthComparison,
+            },
+            {
+              label: "Average per active day",
+              value: hasData ? formatCurrency(analytics.avgPerDay) : "—",
+              hint: hasData ? `${formatCurrency(analytics.avgPerHour)} per active hour` : undefined,
+            },
+          ]}
         />
-        <StatCard
-          label="Best Hour"
-          value={analytics.bestHour?.count ? analytics.bestHour.label : "Not enough data"}
-          helper={analytics.bestHour?.count ? `${formatCurrency(analytics.bestHour.amount)} received in this hour.` : "Needs donation activity."}
-          icon={Clock3}
-        />
-        <StatCard
-          label="Average Donation"
-          value={formatCurrency(analytics.avgDonation)}
-          helper="Average supporter gift size across visible donations."
-          icon={Wallet}
-        />
-        <StatCard
-          label="Growth vs Previous Month"
-          value={formatPercent(analytics.growthAmountPercent)}
-          helper={`${formatPercent(analytics.growthDonationPercent)} donation count movement.`}
-          icon={TrendingUp}
-        />
-      </section>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Average Earnings Per Day"
-          value={formatCurrency(analytics.avgPerDay)}
-          helper="Based on days with donation activity."
-          icon={BarChart3}
-        />
-        <StatCard
-          label="Average Earnings Per Hour"
-          value={formatCurrency(analytics.avgPerHour)}
-          helper="Based on hours where donations happened."
-          icon={Clock3}
-        />
-        <StatCard
-          label="Highest Donation"
-          value={analytics.highestDonation ? formatCurrency(analytics.highestDonation.amountNumber) : "None yet"}
-          helper={analytics.highestDonation ? `From ${analytics.highestDonation.senderName}.` : "No donation recorded yet."}
-          icon={Crown}
-        />
-        <StatCard
-          label="Most Active Supporter"
-          value={analytics.topSupporter?.name || "None yet"}
-          helper={analytics.topSupporter ? `${analytics.topSupporter.count} donations worth ${formatCurrency(analytics.topSupporter.amount)}.` : "No supporter pattern yet."}
-          icon={Users}
-        />
-      </section>
-
-      <section className="rounded-xl bg-zinc-900/80 p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <Medal className="h-5 w-5 text-amber-300" />
-              <h2 className="text-xl font-black text-white">Personal Records</h2>
-            </div>
-            <p className="mt-2 text-sm leading-6 text-zinc-500">
-              Your best creator achievements, automatically calculated from donation history.
-            </p>
-          </div>
-          {newPersonalRecords.length ? (
-            <div className="inline-flex items-center gap-2 rounded-full bg-amber-300/15 px-3 py-1.5 text-sm font-black text-amber-100">
-              <PartyPopper className="h-4 w-4" />
-              {newPersonalRecords.length} new record{newPersonalRecords.length === 1 ? "" : "s"}
-            </div>
-          ) : null}
+        <div className="mt-5 border-t border-white/[0.06] pt-5">
+          <MetricRow
+            metrics={[
+              {
+                label: "Best day",
+                value: analytics.bestWeekday?.amount ? analytics.bestWeekday.fullLabel : "—",
+                hint: analytics.bestWeekday?.amount ? `${formatCurrency(analytics.bestWeekday.amount)} from ${formatNumber(analytics.bestWeekday.count)} donations` : "Needs donation activity",
+              },
+              {
+                label: "Best hour",
+                value: analytics.bestHour?.count ? analytics.bestHour.label : "—",
+                hint: analytics.bestHour?.count ? `${formatCurrency(analytics.bestHour.amount)} received` : "Needs donation activity",
+              },
+              {
+                label: "Highest donation",
+                value: analytics.highestDonation ? formatCurrency(analytics.highestDonation.amountNumber) : "—",
+                hint: analytics.highestDonation ? `From ${analytics.highestDonation.senderName}` : "No donation yet",
+              },
+              {
+                label: "Most active supporter",
+                value: analytics.topSupporter?.name || "—",
+                hint: analytics.topSupporter ? `${analytics.topSupporter.count} donations, ${formatCurrency(analytics.topSupporter.amount)}` : "No supporter yet",
+              },
+            ]}
+          />
         </div>
+      </Panel>
 
-        {recordsLoading ? (
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 7 }).map((_, index) => (
-              <div key={index} className="h-40 animate-pulse rounded-xl bg-black/20" />
-            ))}
-          </div>
-        ) : personalRecords.length ? (
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {personalRecords.map((record) => (
-              <PersonalRecordCard key={record.key} record={record} />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-5 rounded-xl border border-zinc-800 bg-black/20 p-5 text-sm text-zinc-400">
-            Personal records will appear after the first donation history sync.
-          </div>
-        )}
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <ChartShell title="Donation momentum">
+      <section className="grid gap-5 xl:grid-cols-2">
+        <ChartShell title="Last 14 days" description="Donation value per day." empty={!hasData}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={analytics.last14Days} margin={{ left: -18, right: 8, top: 8, bottom: 0 }}>
+            <AreaChart data={analytics.last14Days} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
               <defs>
                 <linearGradient id="analyticsAmount" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.48} />
-                  <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.02} />
+                  <stop offset="0%" stopColor="#a855f7" stopOpacity={0.4} />
+                  <stop offset="100%" stopColor="#a855f7" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#71717a", fontSize: 12 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#71717a", fontSize: 12 }} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ ...axisTick, fontSize: 11 }} interval="preserveStartEnd" minTickGap={16} />
+              <YAxis width={56} allowDecimals={false} axisLine={false} tickLine={false} tick={axisTick} tickFormatter={(value) => formatNairaTick(Number(value))} />
               <Tooltip
-                cursor={{ stroke: "rgba(34,211,238,0.25)" }}
+                cursor={{ stroke: "rgba(168,85,247,0.3)" }}
                 content={({ active, payload }) => active && payload?.length ? (
-                  <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 shadow-xl">
+                  <div className={tooltipBox}>
                     <p className="font-semibold text-white">{formatCurrency(Number(payload[0].value || 0))}</p>
-                    <p className="text-xs text-zinc-400">{payload[0].payload.count} donations</p>
+                    <p className="text-xs text-zinc-400">{payload[0].payload.label} · {payload[0].payload.count} donations</p>
                   </div>
                 ) : null}
               />
-              <Area type="monotone" dataKey="amount" stroke="#22d3ee" strokeWidth={2} fill="url(#analyticsAmount)" />
+              <Area type="monotone" dataKey="amount" stroke="#c084fc" strokeWidth={2} fill="url(#analyticsAmount)" />
             </AreaChart>
           </ResponsiveContainer>
         </ChartShell>
 
-        <ChartShell title="Best hours">
+        <ChartShell title="Best hours" description="All-time donation value by hour of day." empty={!hasData}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={analytics.hourly} margin={{ left: -18, right: 8, top: 8, bottom: 0 }}>
+            <BarChart data={analytics.hourly} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="label" interval={2} axisLine={false} tickLine={false} tick={{ fill: "#71717a", fontSize: 11 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#71717a", fontSize: 12 }} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
+              <XAxis dataKey="label" interval={2} axisLine={false} tickLine={false} tick={{ ...axisTick, fontSize: 11 }} />
+              <YAxis width={56} allowDecimals={false} axisLine={false} tickLine={false} tick={axisTick} tickFormatter={(value) => formatNairaTick(Number(value))} />
               <Tooltip
                 cursor={{ fill: "rgba(168,85,247,0.08)" }}
                 content={({ active, payload }) => active && payload?.length ? (
-                  <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 shadow-xl">
+                  <div className={tooltipBox}>
                     <p className="font-semibold text-white">{formatCurrency(Number(payload[0].value || 0))}</p>
                     <p className="text-xs text-zinc-400">{payload[0].payload.count} donations at {payload[0].payload.label}</p>
                   </div>
                 ) : null}
               />
-              <Bar dataKey="amount" fill="#a855f7" radius={[6, 6, 0, 0]} maxBarSize={28} />
+              <Bar dataKey="amount" fill="#a855f7" radius={[4, 4, 0, 0]} maxBarSize={24} />
             </BarChart>
           </ResponsiveContainer>
         </ChartShell>
       </section>
 
-      <section className="rounded-xl bg-zinc-900/80 p-5">
-          <div className="flex items-center gap-3">
-            <Lightbulb className="h-5 w-5 text-amber-300" />
-            <h2 className="text-lg font-bold text-white">AI-style insights</h2>
-          </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <InsightCard text={analytics.insights[0]} tone="cyan" />
-            <InsightCard text={analytics.insights[1]} tone="emerald" />
-            <InsightCard text={analytics.insights[2]} tone="purple" />
-            <InsightCard text={analytics.insights[3]} tone="amber" />
-          </div>
-      </section>
-
-      <section className="rounded-xl bg-zinc-900/80 p-5">
-        <div className="flex items-center gap-3">
-          <Flame className="h-5 w-5 text-pink-300" />
-          <h2 className="text-lg font-bold text-white">Weekday performance</h2>
-        </div>
-        <div className="mt-5 h-[240px]">
+      <section className="grid gap-5 xl:grid-cols-[1.4fr_1fr]">
+        <ChartShell title="Weekday performance" description="All-time donation value by day of the week." empty={!hasData}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={analytics.weekday} margin={{ left: -18, right: 8, top: 8, bottom: 0 }}>
+            <BarChart data={analytics.weekday} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
               <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#71717a", fontSize: 12 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: "#71717a", fontSize: 12 }} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={axisTick} />
+              <YAxis width={56} allowDecimals={false} axisLine={false} tickLine={false} tick={axisTick} tickFormatter={(value) => formatNairaTick(Number(value))} />
               <Tooltip
                 cursor={{ fill: "rgba(236,72,153,0.08)" }}
                 content={({ active, payload }) => active && payload?.length ? (
-                  <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 shadow-xl">
+                  <div className={tooltipBox}>
                     <p className="font-semibold text-white">{formatCurrency(Number(payload[0].value || 0))}</p>
-                    <p className="text-xs text-zinc-400">{payload[0].payload.fullLabel}</p>
+                    <p className="text-xs text-zinc-400">{payload[0].payload.fullLabel} · {payload[0].payload.count} donations</p>
                   </div>
                 ) : null}
               />
-              <Bar dataKey="amount" fill="#ec4899" radius={[6, 6, 0, 0]} maxBarSize={56} />
+              <Bar dataKey="amount" fill="#ec4899" radius={[4, 4, 0, 0]} maxBarSize={48} />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </ChartShell>
+
+        <Panel title="Insights" description="Calculated from your donation history.">
+          <ul className="space-y-3">
+            {analytics.insights.map((insight) => (
+              <li key={insight} className="flex gap-2.5 text-sm leading-relaxed text-zinc-300">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-purple-300" aria-hidden />
+                <span>{insight}</span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
       </section>
-    </div>
+
+      <Panel
+        title="Personal records"
+        description="Your best moments so far."
+        actions={
+          newPersonalRecords.length ? (
+            <span className="rounded-full bg-amber-300/15 px-2.5 py-1 text-xs font-semibold text-amber-100">
+              {newPersonalRecords.length} new record{newPersonalRecords.length === 1 ? "" : "s"}
+            </span>
+          ) : null
+        }
+      >
+        {recordsLoading ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Loading personal records">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className="h-[76px] animate-pulse rounded-xl bg-white/[0.04] motion-reduce:animate-none" />
+            ))}
+          </div>
+        ) : personalRecords.length ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {personalRecords.map((record) => (
+              <PersonalRecordTile key={record.key} record={record} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState title="No personal records yet">Records appear after your first donations sync.</EmptyState>
+        )}
+      </Panel>
+    </PageShell>
   )
 }

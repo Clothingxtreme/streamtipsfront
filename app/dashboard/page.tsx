@@ -1,17 +1,14 @@
 "use client"
 
 import Link from "next/link"
+import { formatDistanceToNow } from "date-fns"
 import {
   ArrowRight,
-  CalendarDays,
-  CheckCircle2,
-  Crown,
-  Gift,
+  Check,
+  Circle,
+  Copy,
   ShieldCheck,
-  TrendingUp,
-  Users,
   Wallet,
-  XCircle,
   type LucideIcon,
 } from "lucide-react"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
@@ -19,15 +16,9 @@ import { useDonations } from "@/app/context/DonationsContext"
 import { useAuth } from "@/app/context/AuthContext"
 import { useOverlaySettings } from "@/app/context/OverlaySettingsContext"
 import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
-import { DonationsTable } from "@/components/dashboard/donations-table"
-import { VirtualAccountCard } from "@/components/dashboard/virtual-account-card"
+import { DonorAvatar } from "@/components/donor-avatar"
+import { isDonationPendingReview } from "@/components/dashboard/donations-table"
 import { cn } from "@/lib/utils"
-
-const fallbackVirtualAccount = {
-  accountName: "No virtual account yet",
-  accountNumber: "Register a user first",
-  bankName: "Paystack",
-}
 
 const formatCurrency = (num: number) => {
   if (num >= 1_000_000_000) return "NGN " + (num / 1_000_000_000).toFixed(1) + "B"
@@ -37,11 +28,10 @@ const formatCurrency = (num: number) => {
 }
 
 const maxTier = 4
+const RECENT_DONATION_LIMIT = 5
 
 type SessionDonation = {
   amount?: number | string
-  sender?: string
-  senderName?: string
   createdAt?: string | Date
   date?: string | Date
   paymentStatus?: string
@@ -49,112 +39,10 @@ type SessionDonation = {
   status?: string
 }
 
-function SectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-      {children}
-    </p>
-  )
-}
-
-function ActionLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-200 transition-colors hover:text-white"
-    >
-      {children}
-      <ArrowRight className="h-4 w-4" />
-    </Link>
-  )
-}
-
-function StreamReadyItem({
-  title,
-  href,
-  complete,
-}: {
-  title: string
-  href: string
-  complete: boolean
-}) {
-  const content = (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-3 rounded-lg bg-white/[0.03] px-4 py-3 transition-colors",
-        !complete && "hover:bg-white/[0.06]",
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <div
-          className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-            complete ? "bg-emerald-500/15 text-emerald-300" : "bg-red-500/15 text-red-300",
-          )}
-        >
-          {complete ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-        </div>
-        <p className="truncate text-sm font-semibold text-white">{title}</p>
-      </div>
-      {complete ? (
-        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-300">
-          Complete
-        </span>
-      ) : (
-        <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-cyan-200">
-          Fix
-          <ArrowRight className="h-3.5 w-3.5" />
-        </span>
-      )}
-    </div>
-  )
-
-  if (complete) {
-    return content
-  }
-
-  return (
-    <Link href={href} aria-label={`Complete ${title}`}>
-      {content}
-    </Link>
-  )
-}
-
-function SnapshotMetric({
-  label,
-  value,
-  icon: Icon,
-  helper,
-}: {
-  label: string
-  value: string | number
-  icon: LucideIcon
-  helper: string
-}) {
-  return (
-    <div className="rounded-lg bg-zinc-950/50 p-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-800 text-zinc-300">
-          <Icon className="h-4 w-4" />
-        </div>
-        <div>
-          <p className="text-sm text-zinc-500">{label}</p>
-          <p className="mt-1 text-2xl font-bold text-white">{value}</p>
-        </div>
-      </div>
-      <p className="mt-3 text-xs leading-5 text-zinc-500">{helper}</p>
-    </div>
-  )
-}
-
 function getDonationDate(donation: SessionDonation) {
   const value = donation.createdAt || donation.date
   const date = value ? new Date(value) : new Date(0)
   return Number.isNaN(date.getTime()) ? new Date(0) : date
-}
-
-function getDonationName(donation: SessionDonation) {
-  return String(donation.senderName || donation.sender || "Anonymous").trim() || "Anonymous"
 }
 
 function isReviewDonationVisible(donation: SessionDonation) {
@@ -166,135 +54,106 @@ function isReviewDonationVisible(donation: SessionDonation) {
   return paymentStatus === "PAID" || status === "completed" || status === "pending" || !paymentStatus
 }
 
-function formatSessionDate(value?: string) {
-  if (!value) return ""
+function formatDonationTime(value?: string | Date) {
+  if (!value) return { relative: "Just now", full: "" }
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ""
-  return new Intl.DateTimeFormat("en-NG", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date)
+  if (Number.isNaN(date.getTime())) return { relative: "Just now", full: "" }
+  return {
+    relative: formatDistanceToNow(date, { addSuffix: true }),
+    full: new Intl.DateTimeFormat("en-NG", { dateStyle: "medium", timeStyle: "short" }).format(date),
+  }
 }
 
-function SessionReviewCard({
-  review,
-}: {
-  review: {
-    moneyReceived: number
-    donationCount: number
-    highestDonation: { amount: number; name: string } | null
-    topSupporter: { name: string; amount: number; count: number } | null
-    averageDonation: number
-    dateRange: string
-    hasPreviousVisit: boolean
-    mode: "since_last_visit" | "recent_activity" | "all_activity"
-  }
-}) {
-  const insightPrefix =
-    review.mode === "since_last_visit"
-      ? "since your last visit"
-      : review.mode === "recent_activity"
-        ? "from recent activity"
-        : "in your tracked history"
-  const title =
-    review.mode === "since_last_visit"
-      ? "Since your previous dashboard visit"
-      : review.mode === "recent_activity"
-        ? "Recent donation activity"
-        : "Donation activity reference"
-  const highestDonationText = review.highestDonation
-    ? `Your highest donation was ${formatCurrency(review.highestDonation.amount)}.`
-    : "Your highest donation will appear after donation activity."
+const linkFocus =
+  "rounded-md outline-none focus-visible:ring-2 focus-visible:ring-purple-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
 
+function Card({ className, children, ...props }: React.ComponentProps<"section">) {
   return (
-    <section className="rounded-xl bg-zinc-900/70 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.16)] sm:p-6">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <SectionLabel>Session Review</SectionLabel>
-          <h2 className="mt-2 text-2xl font-bold text-white">{title}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-            Based on donation activity snapshots, not livestream start or end detection.
-          </p>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1.5 text-sm text-zinc-300">
-          <CalendarDays className="h-4 w-4 text-cyan-200" />
-          {review.dateRange}
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <SnapshotMetric
-          label="Money Received"
-          value={formatCurrency(review.moneyReceived)}
-          icon={Wallet}
-          helper={`Total received ${insightPrefix}.`}
-        />
-        <SnapshotMetric
-          label="Donations"
-          value={review.donationCount}
-          icon={Gift}
-          helper={`Donation count ${insightPrefix}.`}
-        />
-        <SnapshotMetric
-          label="Highest Donation"
-          value={review.highestDonation ? formatCurrency(review.highestDonation.amount) : "None yet"}
-          icon={Crown}
-          helper={review.highestDonation ? `From ${review.highestDonation.name}.` : "No donation in this window."}
-        />
-        <SnapshotMetric
-          label="Top Supporter"
-          value={review.topSupporter?.name || "None yet"}
-          icon={Users}
-          helper={review.topSupporter ? `${formatCurrency(review.topSupporter.amount)} across ${review.topSupporter.count} donations.` : "No supporter in this window."}
-        />
-        <SnapshotMetric
-          label="Average Donation"
-          value={formatCurrency(review.averageDonation)}
-          icon={TrendingUp}
-          helper="Average amount per donation in this window."
-        />
-      </div>
-
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
-        <div className="rounded-lg border border-cyan-400/15 bg-cyan-400/10 p-4 text-sm leading-6 text-cyan-100">
-          You received <span className="font-black">{review.donationCount}</span> donation{review.donationCount === 1 ? "" : "s"} {insightPrefix}.
-        </div>
-        <div className="rounded-lg border border-emerald-400/15 bg-emerald-400/10 p-4 text-sm leading-6 text-emerald-100">
-          You earned <span className="font-black">{formatCurrency(review.moneyReceived)}</span>.
-        </div>
-        <div className="rounded-lg border border-amber-400/15 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-          {highestDonationText}
-        </div>
-      </div>
+    <section className={cn("rounded-2xl border border-white/[0.07] bg-zinc-900/60 p-5 sm:p-6", className)} {...props}>
+      {children}
     </section>
   )
 }
 
+function CardHeader({ title, action, icon: Icon }: { title: string; action?: ReactNode; icon?: LucideIcon }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-300">
+        {Icon ? <Icon className="h-4 w-4 text-zinc-500" aria-hidden /> : null}
+        {title}
+      </h2>
+      {action}
+    </div>
+  )
+}
+
+function TextLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "inline-flex items-center gap-1 text-sm font-medium text-purple-200 transition-colors hover:text-white",
+        linkFocus,
+      )}
+    >
+      {children}
+      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+    </Link>
+  )
+}
+
+function ProgressBar({ value, className, label }: { value: number; className?: string; label: string }) {
+  const clamped = Math.max(0, Math.min(100, value))
+  return (
+    <div
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={clamped}
+      className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]"
+    >
+      <div className={cn("h-full rounded-full", className)} style={{ width: `${clamped}%` }} />
+    </div>
+  )
+}
+
 export default function DashboardPage() {
-  const { donations } = useDonations()
+  const { donations, status: donationsStatus, reloadDonations } = useDonations()
   const { user } = useAuth()
   const { settings: overlaySettings } = useOverlaySettings()
   const { customization } = useOverlayCustomization()
   const [previousDashboardVisitAt, setPreviousDashboardVisitAt] = useState("")
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!user?.id || typeof window === "undefined") return
 
     const storageKey = `streamtip.dashboard.lastVisit.${user.id}`
-    const previousVisit = window.localStorage.getItem(storageKey) || ""
-
-    setPreviousDashboardVisitAt(previousVisit)
-    window.localStorage.setItem(storageKey, new Date().toISOString())
+    // The dashboard can mount more than once per visit, and each mount stamps the visit time, so remember
+    // the previous visit for the rest of this browser session instead of re-reading the value just written.
+    const sessionKey = `${storageKey}.previous`
+    try {
+      let previousVisit = window.sessionStorage.getItem(sessionKey)
+      if (previousVisit === null) {
+        previousVisit = window.localStorage.getItem(storageKey) || ""
+        window.sessionStorage.setItem(sessionKey, previousVisit)
+      }
+      setPreviousDashboardVisitAt(previousVisit)
+      window.localStorage.setItem(storageKey, new Date().toISOString())
+    } catch {
+      setPreviousDashboardVisitAt("")
+    }
   }, [user?.id])
 
+  // --- Earnings (unchanged sources and formulas) ---
   const totalFromDonations = donations.reduce((sum, donation) => sum + Number(donation.amount || 0), 0)
   const walletTotalReceived = Number(user?.wallet?.totalReceived || 0)
   const totalEarnings = Math.max(walletTotalReceived, totalFromDonations)
   const totalDonations = donations.length
   const uniqueDonors = new Set(donations.map((donation) => donation.senderName || donation.sender || "Anonymous")).size
-  const avgDonation = totalDonations > 0 ? Math.round(totalFromDonations / totalDonations) : 0
-  const latestDonation = donations[0]
-  const account = user?.virtualAccount || fallbackVirtualAccount
+
+  // --- Stream readiness (unchanged rules, destinations and score) ---
   const accountReady =
     Boolean(user?.virtualAccount?.accountNumber) &&
     String(user?.virtualAccount?.status || "active").toLowerCase() !== "failed"
@@ -304,232 +163,263 @@ export default function DashboardPage() {
   const donationGoalReady = Boolean(customization.goalTitle?.trim()) && Number(customization.goalAmount || 0) > 0
   const profileReady = Boolean(user?.name && user?.email) && Boolean(user?.socialProfile?.handle || user?.socialProfile?.profileUrl || user?.socialProfile?.liveUrl)
   const streamReadyItems = [
-    { title: "Virtual Account", complete: accountReady, href: "/dashboard/account" },
-    { title: "Overlay Connected", complete: overlayReady, href: "/dashboard/overlay" },
-    { title: "Donation Animation", complete: donationAnimationReady, href: "/dashboard/settings" },
-    { title: "Leaderboard", complete: leaderboardReady, href: "/dashboard/overlay" },
-    { title: "Donation Goal", complete: donationGoalReady, href: "/dashboard/overlay" },
-    { title: "Complete Profile", complete: profileReady, href: "/dashboard/settings" },
+    { title: "Virtual Account", complete: accountReady, href: "/dashboard/account", hint: "Get the account supporters pay into" },
+    { title: "Overlay Connected", complete: overlayReady, href: "/dashboard/overlay", hint: "Add your overlay link to OBS" },
+    { title: "Donation Animation", complete: donationAnimationReady, href: "/dashboard/settings", hint: "Turn on tip animations" },
+    { title: "Leaderboard", complete: leaderboardReady, href: "/dashboard/overlay", hint: "Show top supporters on stream" },
+    { title: "Donation Goal", complete: donationGoalReady, href: "/dashboard/overlay", hint: "Set a goal title and amount" },
+    { title: "Complete Profile", complete: profileReady, href: "/dashboard/settings#social-profiles", hint: "Add your social page" },
   ]
   const completedStreamReadyItems = streamReadyItems.filter((item) => item.complete).length
   const streamReadyScore = Math.round((completedStreamReadyItems / streamReadyItems.length) * 100)
+
+  // --- Tier (unchanged calculation) ---
   const tier = Math.min(maxTier, Math.max(1, Number(user?.kyc?.tier || user?.kycTier || 1)))
   const tierProgress = Math.round((tier / maxTier) * 100)
-  const sessionReview = useMemo(() => {
+  const upgradeUnderReview = user?.kyc?.upgradeStatus === "awaiting_review"
+
+  // --- Since last visit (same visit tracking and visibility rule as the previous session review) ---
+  const sinceLastVisit = useMemo(() => {
     const previousVisitTime = previousDashboardVisitAt ? new Date(previousDashboardVisitAt).getTime() : 0
-    const hasValidPreviousVisit = Boolean(previousVisitTime && !Number.isNaN(previousVisitTime))
-    const visibleDonations = donations
+    if (!previousVisitTime || Number.isNaN(previousVisitTime)) return null
+    const recent = donations
       .filter(isReviewDonationVisible)
-      .sort((left, right) => getDonationDate(right).getTime() - getDonationDate(left).getTime())
-    const donationsSinceVisit = visibleDonations
-      .filter((donation) => {
-        if (!hasValidPreviousVisit) return true
-        return getDonationDate(donation).getTime() > previousVisitTime
-      })
-    const latestDonationTime = visibleDonations[0] ? getDonationDate(visibleDonations[0]).getTime() : 0
-    const recentWindowStart = latestDonationTime ? latestDonationTime - 24 * 60 * 60 * 1000 : 0
-    const recentDonations = recentWindowStart
-      ? visibleDonations.filter((donation) => getDonationDate(donation).getTime() >= recentWindowStart)
-      : []
-    const reviewDonations = donationsSinceVisit.length
-      ? donationsSinceVisit
-      : recentDonations.length
-        ? recentDonations
-        : visibleDonations
-    const mode = donationsSinceVisit.length
-      ? "since_last_visit"
-      : recentDonations.length
-        ? "recent_activity"
-        : "all_activity"
-
-    const moneyReceived = reviewDonations.reduce((sum, donation) => sum + Number(donation.amount || 0), 0)
-    const highestDonation = reviewDonations.reduce<{ amount: number; name: string } | null>(
-      (highest, donation) => {
-        const amount = Number(donation.amount || 0)
-        if (!highest || amount > highest.amount) {
-          return { amount, name: getDonationName(donation) }
-        }
-        return highest
-      },
-      null,
-    )
-    const supporterStats = new Map<string, { name: string; amount: number; count: number }>()
-
-    reviewDonations.forEach((donation) => {
-      const name = getDonationName(donation)
-      const key = name.toLowerCase()
-      const current = supporterStats.get(key) || { name, amount: 0, count: 0 }
-      current.amount += Number(donation.amount || 0)
-      current.count += 1
-      supporterStats.set(key, current)
-    })
-
-    const topSupporter =
-      Array.from(supporterStats.values()).sort((a, b) => b.amount - a.amount || b.count - a.count)[0] || null
-    const averageDonation = reviewDonations.length ? Math.round(moneyReceived / reviewDonations.length) : 0
-    const dateRange = mode === "since_last_visit"
-      ? `${formatSessionDate(previousDashboardVisitAt)} - now`
-      : mode === "recent_activity" && latestDonationTime
-        ? `Recent activity ending ${formatSessionDate(new Date(latestDonationTime).toISOString())}`
-        : "All tracked dashboard activity"
-
+      .filter((donation) => getDonationDate(donation).getTime() > previousVisitTime)
+    if (!recent.length) return null
     return {
-      moneyReceived,
-      donationCount: reviewDonations.length,
-      highestDonation,
-      topSupporter,
-      averageDonation,
-      dateRange,
-      hasPreviousVisit: mode === "since_last_visit" && hasValidPreviousVisit,
-      mode,
+      count: recent.length,
+      amount: recent.reduce((sum, donation) => sum + Number(donation.amount || 0), 0),
     }
   }, [donations, previousDashboardVisitAt])
 
+  const virtualAccount = user?.virtualAccount
+  const canCopyAccountNumber = accountReady && /^\d+$/.test(String(virtualAccount?.accountNumber || ""))
+  const recentDonations = donations.slice(0, RECENT_DONATION_LIMIT)
+  const showDonationsLoading = donationsStatus === "loading" || (donationsStatus === "idle" && !donations.length)
+  const showDonationsError = donationsStatus === "error" && !donations.length
+
+  const copyAccountNumber = async () => {
+    if (!canCopyAccountNumber || !virtualAccount?.accountNumber) return
+    try {
+      await navigator.clipboard.writeText(virtualAccount.accountNumber)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setCopied(false)
+    }
+  }
+
   return (
-    <div data-tour="dashboard-main" className="space-y-8 p-5 sm:p-6 lg:p-8">
-      <div className="max-w-4xl space-y-2">
-        <SectionLabel>Creator overview</SectionLabel>
-        <h1 className="text-3xl font-black text-white">Dashboard</h1>
-        <p className="max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
-          Keep your stream ready, understand your current fee, and review the numbers that matter most before going live.
-        </p>
-      </div>
+    <div data-tour="dashboard-main" className="mx-auto w-full max-w-6xl space-y-5 p-4 sm:p-6 lg:p-8">
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard</h1>
+        <p className="mt-1 text-sm text-zinc-400">Your earnings, setup status and latest tips at a glance.</p>
+      </header>
 
-      <SessionReviewCard review={sessionReview} />
-
-      <section className="grid gap-6 xl:grid-cols-[1.35fr_0.9fr]">
-        <div className="rounded-xl bg-zinc-900/70 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.18)] sm:p-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <SectionLabel>1. Stream Ready</SectionLabel>
-              <h2 className="mt-2 text-2xl font-bold text-white">Go-live readiness</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-                Complete the essentials before you open OBS or TikTok Studio.
-              </p>
-            </div>
-            <div className="min-w-[180px] rounded-xl bg-black/20 p-4">
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Score</p>
-                  <p className="mt-1 text-4xl font-black text-white">{streamReadyScore}%</p>
-                </div>
-                <span className="pb-1 text-sm text-zinc-400">
-                  {completedStreamReadyItems}/{streamReadyItems.length}
-                </span>
-              </div>
-              <div className="mt-4 h-2 rounded-full bg-zinc-800">
-                <div
-                  className={cn(
-                    "h-full rounded-full",
-                    streamReadyScore >= 80
-                      ? "bg-emerald-400"
-                      : streamReadyScore >= 50
-                        ? "bg-amber-300"
-                        : "bg-red-400",
-                  )}
-                  style={{ width: `${streamReadyScore}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {streamReadyItems.map((item) => (
-              <StreamReadyItem
-                key={item.title}
-                title={item.title}
-                href={item.href}
-                complete={item.complete}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-xl bg-gradient-to-br from-purple-500/15 via-zinc-900/80 to-pink-500/10 p-5 sm:p-6">
-          <SectionLabel>2. Account Tier</SectionLabel>
-          <div className="mt-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-sm text-zinc-400">Current creator tier</p>
-              <p className="mt-1 text-5xl font-black text-white">Tier {tier}</p>
-            </div>
-            <div className="rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-300">
-              {tier} of {maxTier}
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <div className="rounded-lg bg-black/20 p-4">
-              <p className="text-xs text-zinc-500">Total received tracked</p>
-              <p className="mt-2 text-xl font-bold text-white">{formatCurrency(totalEarnings)}</p>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-zinc-400">Tier progress</span>
-              <span className="font-semibold text-white">Tier {tier} of {maxTier}</span>
-            </div>
-            <div className="mt-3 h-2 rounded-full bg-zinc-800">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-purple-400 via-fuchsia-400 to-pink-400"
-                style={{ width: `${tierProgress}%` }}
-              />
-            </div>
-            <div className="mt-4 flex items-center justify-between gap-4">
-              <p className="text-xs leading-5 text-zinc-500">
-                Higher tiers unlock stronger account limits and more room to grow.
-              </p>
-              <Link
-                href="/dashboard/kyc-upgrade"
-                className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Upgrade
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-xl bg-zinc-900/70 p-5 sm:p-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <SectionLabel>3. Performance Snapshot</SectionLabel>
-            <h2 className="mt-2 text-2xl font-bold text-white">What matters right now</h2>
-          </div>
-          <p className="text-sm text-zinc-500">
-            {latestDonation ? `Latest donation: ${formatCurrency(Number(latestDonation.amount) || 0)}` : "No donation activity yet"}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Earnings */}
+        <Card className="lg:col-span-2" aria-labelledby="dashboard-earnings-title">
+          <CardHeader
+            title="Total received"
+            icon={Wallet}
+            action={<TextLink href="/dashboard/earnings">View earnings</TextLink>}
+          />
+          <p id="dashboard-earnings-title" className="mt-3 text-4xl font-bold tracking-tight text-white tabular-nums sm:text-5xl">
+            {formatCurrency(totalEarnings)}
           </p>
-        </div>
+          <p className="mt-2 text-sm text-zinc-400">
+            {totalDonations.toLocaleString()} donation{totalDonations === 1 ? "" : "s"}
+            {totalDonations ? ` from ${uniqueDonors.toLocaleString()} supporter${uniqueDonors === 1 ? "" : "s"}` : ""}
+          </p>
+          {sinceLastVisit ? (
+            <p className="mt-3 inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+              +{formatCurrency(sinceLastVisit.amount)} from {sinceLastVisit.count} donation{sinceLastVisit.count === 1 ? "" : "s"} since your last visit
+            </p>
+          ) : null}
 
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <SnapshotMetric label="Total received" value={formatCurrency(totalEarnings)} icon={Wallet} helper="All-time amount received through StreamTips." />
-          <SnapshotMetric label="Donations" value={totalDonations} icon={Gift} helper="Total donation events currently tracked." />
-          <SnapshotMetric label="Unique donors" value={uniqueDonors} icon={Users} helper="Supporters counted by donor name." />
-          <SnapshotMetric label="Average donation" value={formatCurrency(avgDonation)} icon={TrendingUp} helper="Average amount per donation transaction." />
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[1.25fr_0.85fr]">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <SectionLabel>Secondary activity</SectionLabel>
-              <h2 className="mt-2 text-xl font-bold text-white">Recent transactions</h2>
+          <div className="mt-5 flex flex-col gap-3 border-t border-white/[0.06] pt-4 sm:flex-row sm:items-center sm:justify-between">
+            {accountReady && virtualAccount ? (
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-zinc-500">Supporters send tips to</p>
+                  <p className="truncate text-sm font-medium text-white">
+                    {virtualAccount.bankName ? `${virtualAccount.bankName} · ` : ""}
+                    <span className="font-mono tracking-wide">{virtualAccount.accountNumber}</span>
+                  </p>
+                </div>
+                {canCopyAccountNumber ? (
+                  <button
+                    type="button"
+                    onClick={() => void copyAccountNumber()}
+                    className={cn(
+                      "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 text-xs font-medium text-zinc-200 transition-colors hover:border-white/20 hover:text-white",
+                      linkFocus,
+                    )}
+                    aria-label={copied ? "Account number copied" : "Copy account number"}
+                  >
+                    {copied ? <Check className="h-3.5 w-3.5 text-emerald-300" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">Your virtual account details will appear here once it is ready.</p>
+            )}
+            <div className="flex items-center gap-4">
+              <TextLink href="/dashboard/account">Account details</TextLink>
+              <TextLink href="/dashboard/analytics">Analytics</TextLink>
             </div>
-            <ActionLink href="/dashboard/donations">View all</ActionLink>
           </div>
-          <DonationsTable donations={donations} title="Recent Transactions" maxItems={6} />
-        </div>
+        </Card>
 
-        <div className="space-y-3">
-          <div>
-            <SectionLabel>Account details</SectionLabel>
-            <h2 className="mt-2 text-xl font-bold text-white">Virtual account</h2>
+        {/* Tier */}
+        <Card aria-labelledby="dashboard-tier-title">
+          <CardHeader title="Creator tier" icon={ShieldCheck} />
+          <div className="mt-3 flex items-baseline justify-between gap-3">
+            <p id="dashboard-tier-title" className="text-3xl font-bold text-white">Tier {tier}</p>
+            <span className="text-sm tabular-nums text-zinc-400">{tier} of {maxTier}</span>
           </div>
-          <VirtualAccountCard account={account} />
-        </div>
-      </section>
+          <div className="mt-4">
+            <ProgressBar
+              value={tierProgress}
+              label="Creator tier progress"
+              className="bg-gradient-to-r from-purple-500 to-pink-500"
+            />
+          </div>
+          <p className="mt-3 text-sm text-zinc-400">
+            {upgradeUnderReview
+              ? "Your upgrade request is under review."
+              : tier < maxTier
+                ? `Next: Tier ${tier + 1}, with higher account limits.`
+                : "You're on the highest tier."}
+          </p>
+          <div className="mt-4">
+            <TextLink href="/dashboard/kyc-upgrade">View tier benefits</TextLink>
+          </div>
+        </Card>
+
+        {/* Recent donations */}
+        <Card className="lg:col-span-2" aria-labelledby="dashboard-recent-title">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="dashboard-recent-title" className="text-sm font-semibold text-zinc-300">Recent donations</h2>
+            <TextLink href="/dashboard/donations">View all</TextLink>
+          </div>
+
+          {showDonationsLoading ? (
+            <ul className="mt-4 space-y-3" aria-label="Loading recent donations">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <li key={index} className="flex items-center gap-3">
+                  <div className="h-9 w-9 animate-pulse rounded-full bg-white/[0.06] motion-reduce:animate-none" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 w-32 animate-pulse rounded bg-white/[0.06] motion-reduce:animate-none" />
+                    <div className="h-2.5 w-20 animate-pulse rounded bg-white/[0.04] motion-reduce:animate-none" />
+                  </div>
+                  <div className="h-3 w-16 animate-pulse rounded bg-white/[0.06] motion-reduce:animate-none" />
+                </li>
+              ))}
+            </ul>
+          ) : showDonationsError ? (
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-red-400/20 bg-red-500/[0.06] px-4 py-3 text-sm text-red-200 sm:flex-row sm:items-center sm:justify-between">
+              <span>We couldn&apos;t load your donations.</span>
+              <button
+                type="button"
+                onClick={reloadDonations}
+                className={cn("self-start font-medium text-white underline underline-offset-4 sm:self-auto", linkFocus)}
+              >
+                Try again
+              </button>
+            </div>
+          ) : recentDonations.length === 0 ? (
+            <div className="mt-4 rounded-xl border border-dashed border-white/10 px-4 py-6 text-center">
+              <p className="text-sm font-medium text-zinc-300">No donations yet</p>
+              <p className="mt-1 text-sm text-zinc-500">Tips will appear here as soon as supporters send them.</p>
+            </div>
+          ) : (
+            <ul className="mt-3 divide-y divide-white/[0.06]">
+              {recentDonations.map((donation, index) => {
+                const name = donation.senderName || donation.sender || "Anonymous"
+                const amount = Number(donation.amount) || 0
+                const pending = isDonationPendingReview(donation as Parameters<typeof isDonationPendingReview>[0])
+                const time = formatDonationTime(donation.createdAt)
+                return (
+                  <li key={donation._id || `${name}-${index}`} className="flex items-center gap-3 py-3">
+                    <DonorAvatar name={name} className="h-9 w-9 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-white">{name}</p>
+                      <p className="text-xs text-zinc-500">
+                        <time dateTime={donation.createdAt ? new Date(donation.createdAt).toISOString() : undefined} title={time.full}>
+                          {time.relative}
+                        </time>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn("text-sm font-semibold tabular-nums", pending ? "text-amber-300" : "text-emerald-400")}>
+                        NGN {amount.toLocaleString()}
+                      </p>
+                      {pending ? <p className="text-xs text-amber-400">Pending review</p> : null}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </Card>
+
+        {/* Stream readiness */}
+        <Card aria-labelledby="dashboard-readiness-title">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 id="dashboard-readiness-title" className="text-sm font-semibold text-zinc-300">Stream readiness</h2>
+            <span className="text-sm tabular-nums text-zinc-400">
+              <span className="font-semibold text-white">{streamReadyScore}%</span> · {completedStreamReadyItems}/{streamReadyItems.length}
+            </span>
+          </div>
+          <div className="mt-3">
+            <ProgressBar
+              value={streamReadyScore}
+              label="Stream readiness"
+              className={
+                streamReadyScore >= 80 ? "bg-emerald-400" : streamReadyScore >= 50 ? "bg-amber-300" : "bg-red-400"
+              }
+            />
+          </div>
+          <ul className="mt-4 space-y-1">
+            {streamReadyItems.map((item) =>
+              item.complete ? (
+                <li key={item.title} className="flex items-center gap-3 px-2 py-2 text-sm text-zinc-400">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+                    <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
+                  </span>
+                  <span className="truncate">{item.title}</span>
+                  <span className="sr-only">(complete)</span>
+                </li>
+              ) : (
+                <li key={item.title}>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "group flex items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-white/[0.04]",
+                      linkFocus,
+                    )}
+                  >
+                    <Circle className="h-5 w-5 shrink-0 text-zinc-600" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-white">{item.title}</span>
+                      <span className="block truncate text-xs text-zinc-500">{item.hint}</span>
+                    </span>
+                    <span className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-purple-200 group-hover:text-white">
+                      Set up
+                      <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                    </span>
+                  </Link>
+                </li>
+              ),
+            )}
+          </ul>
+          {completedStreamReadyItems === streamReadyItems.length ? (
+            <p className="mt-3 text-sm text-emerald-300">You&apos;re ready to go live.</p>
+          ) : null}
+        </Card>
+      </div>
     </div>
   )
 }

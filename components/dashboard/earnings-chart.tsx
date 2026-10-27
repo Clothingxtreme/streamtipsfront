@@ -1,6 +1,7 @@
 "use client"
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
+import { EmptyState, formatNairaTick } from "@/components/dashboard/page-kit"
 
 export interface EarningsDataPoint {
   label: string
@@ -14,11 +15,15 @@ interface EarningsChartProps {
 
 export function EarningsChart({ data, title = "Earnings Over Time" }: EarningsChartProps) {
   return (
-    <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-6">
-      <h3 className="text-lg font-semibold text-white mb-6">{title}</h3>
-      <div className="h-[300px] w-full">
+    <section className="rounded-2xl border border-white/[0.07] bg-zinc-900/60 p-5 sm:p-6">
+      <h2 className="mb-4 text-base font-semibold text-white">{title}</h2>
+      {!data.length || data.every((point) => !point.amount) ? (
+        <EmptyState title="No settled earnings yet">This chart fills in once donations settle.</EmptyState>
+      ) : (
+      <div className="h-[240px] w-full" role="img" aria-label={`${title} chart`}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
             <XAxis
               dataKey="label"
               axisLine={false}
@@ -29,7 +34,9 @@ export function EarningsChart({ data, title = "Earnings Over Time" }: EarningsCh
               axisLine={false}
               tickLine={false}
               tick={{ fill: "#71717a", fontSize: 12 }}
-              tickFormatter={(value) => `₦${(value / 1000).toFixed(0)}k`}
+              width={56}
+              allowDecimals={false}
+              tickFormatter={(value) => formatNairaTick(Number(value))}
             />
             <Tooltip
               cursor={{ fill: "rgba(168, 85, 247, 0.1)" }}
@@ -59,11 +66,12 @@ export function EarningsChart({ data, title = "Earnings Over Time" }: EarningsCh
               dataKey="amount"
               fill="url(#barGradient)"
               radius={[6, 6, 0, 0]}
-              maxBarSize={50}
+              maxBarSize={44}
             />
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </div>
+      )}
+    </section>
   )
 }

@@ -256,13 +256,13 @@ export default function AdminPage() {
               </div>
 
               <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <MetricTile label="Platform 20% (all-time)" value={formatCurrency(overview.metrics.platformRevenue)} />
-                <MetricTile label="Creator 80%" value={formatCurrency(overview.metrics.creatorRevenue)} />
+                <MetricTile label="Platform fee (all-time)" value={formatCurrency(overview.metrics.platformRevenue)} />
+                <MetricTile label="Creator share" value={formatCurrency(overview.metrics.creatorRevenue)} />
                 <MetricTile label="Paid out" value={formatCurrency(overview.metrics.totalPaidOut)} />
               </div>
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-zinc-300">
-                Creator withdrawals are now capped to the 80% creator share. The platform 20% is reserved automatically in system reporting and included in this admin view.
+                Creator withdrawals are now capped to the creator share. The platform fee is reserved automatically in system reporting and included in this admin view.
               </div>
             </div>
 

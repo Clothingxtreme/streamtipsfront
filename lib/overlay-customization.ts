@@ -37,6 +37,7 @@ export interface OverlayCustomization {
   showAccountDetails: boolean
   showTopSupporter: boolean
   showAmbientScene: boolean
+  showDonationTotalSubtitle: boolean
   alertPosition: PositionedOverlayObject
   goalPosition: PositionedOverlayObject
   leaderboardPosition: PositionedOverlayObject
@@ -110,6 +111,7 @@ export const defaultOverlayCustomization: OverlayCustomization = {
   showAccountDetails: true,
   showTopSupporter: true,
   showAmbientScene: true,
+  showDonationTotalSubtitle: true,
   alertPosition: {
     anchor: "center",
     offsetX: 0,
@@ -287,6 +289,10 @@ export function sanitizeOverlayCustomization(value: unknown): OverlayCustomizati
       typeof candidate.showAmbientScene === "boolean"
         ? candidate.showAmbientScene
         : defaultOverlayCustomization.showAmbientScene,
+    showDonationTotalSubtitle:
+      typeof candidate.showDonationTotalSubtitle === "boolean"
+        ? candidate.showDonationTotalSubtitle
+        : defaultOverlayCustomization.showDonationTotalSubtitle,
     alertPosition: sanitizePosition(
       candidate.alertPosition,
       defaultOverlayCustomization.alertPosition,
