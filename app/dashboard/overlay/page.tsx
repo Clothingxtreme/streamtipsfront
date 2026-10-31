@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import Link from "next/link"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 import {
@@ -8,6 +8,7 @@ import {
   CreditCard,
   Crown,
   ExternalLink,
+  Gift,
   ListOrdered,
   RotateCcw,
   Sigma,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/app/context/AuthContext"
 import { useOverlayCustomization } from "@/app/context/OverlayCustomizationContext"
+import { useOverlaySettings } from "@/app/context/OverlaySettingsContext"
 import { VideoGuideCard } from "@/components/dashboard/video-guide-card"
 import {
   CopyButton,
@@ -37,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import {
   DonationTotalCard,
@@ -45,7 +48,9 @@ import {
 } from "@/components/donation-total-overlay"
 import { overlayLabelClass, overlayPanelClass } from "@/components/overlay-theme"
 import { getStreamerPublicAccountName } from "@/lib/account-display"
+import { giftPackThemes } from "@/lib/gifts"
 import { getCreatorNickname } from "@/lib/nickname"
+import type { GiftPackId } from "@/lib/overlay-customization"
 import { resetOverlayDonationTotal, saveOverlayState } from "@/lib/overlay-state-client"
 import { getOverlayUrl, type OverlayUrlMode } from "@/lib/runtime-config"
 import { setupTutorialGuide } from "@/lib/video-guides"
@@ -56,12 +61,14 @@ const TABS = [
   { id: "goal", label: "Donation Goal", icon: Target },
   { id: "account", label: "Account Card", icon: CreditCard },
   { id: "total", label: "Donation Total", icon: Sigma },
+  { id: "gifts", label: "Gift Alerts", icon: Gift },
   { id: "setup", label: "Setup Guide", icon: BookOpen },
 ] as const
 
 type TabId = (typeof TABS)[number]["id"]
 
-const SOURCE_SIZES: Record<Exclude<OverlayUrlMode, "full" | "gifts">, string> = {
+const SOURCE_SIZES: Record<Exclude<OverlayUrlMode, "full">, string> = {
+  gifts: "1920 × 1080",
   leaderboard: "400 × 520",
   goal: "780 × 160",
   account: "400 × 220",
@@ -134,7 +141,7 @@ function OverlayUrlRow({ mode, label = "Overlay URL" }: { mode: OverlayUrlMode; 
           ) : null}
         </div>
       </div>
-      {mode !== "full" && mode !== "gifts" ? (
+      {mode !== "full" ? (
         <p className="text-xs text-zinc-500">
           Add it as a Browser Source, about {SOURCE_SIZES[mode]} px.{" "}
           <button
@@ -619,6 +626,64 @@ function TotalTab() {
   )
 }
 
+function GiftAlertsTab() {
+  const { settings, updateSetting } = useOverlaySettings()
+  const { customization, updateCustomization } = useOverlayCustomization()
+
+  return (
+    <Panel
+      title="Gift alerts"
+      description="Animated alerts that play when a donation arrives. The source stays transparent between alerts."
+    >
+      <div className="space-y-5">
+        <ToggleRow
+          id="toggle-gift-alerts"
+          label="Show gift alerts"
+          description="Turn alerts off without removing the browser source."
+          checked={settings.animations}
+          onChange={(checked) => void updateSetting("animations", checked)}
+        />
+        <ToggleRow
+          id="toggle-gift-sounds"
+          label="Play alert sounds"
+          description="Sounds play through the browser source, so enable its audio in OBS or TikTok LIVE Studio."
+          checked={settings.sounds}
+          onChange={(checked) => void updateSetting("sounds", checked)}
+        />
+
+        <div className="space-y-1.5">
+          <label htmlFor="gift-alert-style" className="text-sm font-medium text-zinc-300">
+            Animation style
+          </label>
+          <Select
+            value={customization.giftPack}
+            onValueChange={(value) => updateCustomization("giftPack", value as GiftPackId)}
+          >
+            <SelectTrigger id="gift-alert-style" className="w-full border-zinc-800 bg-zinc-950 text-white sm:w-64">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="border-zinc-800 bg-zinc-900">
+              {giftPackThemes.map((theme) => (
+                <SelectItem key={theme.id} value={theme.id} className="text-white focus:bg-zinc-800 focus:text-white">
+                  {theme.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-zinc-500">
+            {giftPackThemes.find((theme) => theme.id === customization.giftPack)?.description || ""}{" "}
+            <Link href="/dashboard/custom-gifts" className="underline underline-offset-2 hover:text-zinc-300">
+              Create a custom gift
+            </Link>
+          </p>
+        </div>
+
+        <OverlayUrlRow mode="gifts" label="Gift alerts URL" />
+      </div>
+    </Panel>
+  )
+}
+
 function SetupGuideTab() {
   const { customization, updateCustomization } = useOverlayCustomization()
 
@@ -728,6 +793,19 @@ function SetupGuideTab() {
 
 export default function OverlaySettingsPage() {
   const [tab, setTab] = useState<TabId>("leaderboard")
+  const tabListRef = useRef<HTMLDivElement>(null)
+
+  // On narrow screens the tab row scrolls sideways; keep the selected tab visible
+  // (e.g. when the page opens on ?tab=gifts or ?tab=setup).
+  useEffect(() => {
+    const active = tabListRef.current?.querySelector<HTMLElement>('[role="tab"][data-state="active"]')
+    const list = tabListRef.current
+    if (!active || !list || list.scrollWidth <= list.clientWidth) return
+    const left = active.getBoundingClientRect().left - list.getBoundingClientRect().left + list.scrollLeft
+    if (left < list.scrollLeft || left + active.offsetWidth > list.scrollLeft + list.clientWidth) {
+      list.scrollTo({ left: Math.max(0, left - 16), behavior: "smooth" })
+    }
+  }, [tab])
 
   // Keep the selected tab in the URL (?tab=...) so it can be linked to and survives reloads.
   useEffect(() => {
@@ -766,6 +844,7 @@ export default function OverlaySettingsPage() {
 
       <TabsPrimitive.Root value={tab} onValueChange={changeTab} className="space-y-4">
         <TabsPrimitive.List
+          ref={tabListRef}
           aria-label="Overlay settings sections"
           className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0"
         >
@@ -799,6 +878,9 @@ export default function OverlaySettingsPage() {
         </TabsPrimitive.Content>
         <TabsPrimitive.Content value="total" className="outline-none">
           <TotalTab />
+        </TabsPrimitive.Content>
+        <TabsPrimitive.Content value="gifts" className="outline-none">
+          <GiftAlertsTab />
         </TabsPrimitive.Content>
         <TabsPrimitive.Content value="setup" className="outline-none">
           <SetupGuideTab />
