@@ -250,6 +250,25 @@ export function DonationTotalCard({
 export function DonationTotalOverlay({ creatorId }: { creatorId: string }) {
   const { total, status } = useLiveDonationTotal(creatorId)
 
+  // The root layout paints <body> with the theme background (white: `body { @apply bg-background }`
+  // in globals.css). Browser sources only show through where html/body are transparent, so clear
+  // both while this overlay is mounted, the same way the other overlays (components/overlay.tsx) do.
+  useEffect(() => {
+    const previousBodyBackground = document.body.style.background
+    const previousBodyOverflow = document.body.style.overflow
+    const previousHtmlBackground = document.documentElement.style.background
+
+    document.body.style.background = "transparent"
+    document.body.style.overflow = "hidden"
+    document.documentElement.style.background = "transparent"
+
+    return () => {
+      document.body.style.background = previousBodyBackground
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.background = previousHtmlBackground
+    }
+  }, [])
+
   return (
     <div className="fixed inset-0 overflow-hidden bg-transparent p-3 text-white">
       <DonationTotalCard total={total} status={status} />
